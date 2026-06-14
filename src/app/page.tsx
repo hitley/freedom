@@ -1,9 +1,9 @@
-import FinancialDashboard from "@/components/FinancialDashboard";
+import FreedomApp from "@/components/FreedomApp";
 
 export default function Home() {
   return (
     <main className="flex-1">
-      <FinancialDashboard />
+      <FreedomApp />
     </main>
   );
 }

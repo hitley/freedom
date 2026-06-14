@@ -1,20 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { project, type FinancialInputs } from "@/lib/finance";
+import { type FinancialInputs, type Projection } from "@/lib/finance";
 import ProjectionChart from "./ProjectionChart";
 
 const START_YEAR = new Date().getFullYear();
-
-const DEFAULTS: FinancialInputs = {
-  currentInvested: 325_000,
-  monthlyContribution: 1_500,
-  annualSpend: 50_000,
-  realReturnPct: 5,
-  withdrawalRatePct: 4,
-  ongoingAnnualIncome: 0,
-  currentAge: 40,
-};
 
 const gbp0 = new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -28,49 +17,21 @@ function moneyShort(n: number): string {
   return gbp0.format(n);
 }
 
-const DIMENSIONS = [
-  { id: "financial", label: "Financial", ready: true },
-  { id: "time", label: "Time", ready: false },
-  { id: "health", label: "Health", ready: false },
-];
-
-export default function FinancialDashboard() {
-  const [inputs, setInputs] = useState<FinancialInputs>(DEFAULTS);
-  const proj = useMemo(() => project(inputs), [inputs]);
-
-  const set = (key: keyof FinancialInputs) => (v: number) =>
-    setInputs((prev) => ({ ...prev, [key]: v }));
+export default function FinancialDashboard({
+  inputs,
+  proj,
+  onChange,
+}: {
+  inputs: FinancialInputs;
+  proj: Projection;
+  onChange: (key: keyof FinancialInputs, value: number) => void;
+}) {
+  const set = (key: keyof FinancialInputs) => (v: number) => onChange(key, v);
 
   const reached = proj.freedomYear !== null;
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:px-8">
-      {/* header */}
-      <header className="mb-12 flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="font-display text-2xl font-bold tracking-tight">
-            freedom<span className="text-emerald">.</span>
-          </div>
-          <p className="mt-1 text-sm text-muted">Three dimensions. One life.</p>
-        </div>
-        <nav className="flex gap-1 rounded-full border border-border bg-surface p-1">
-          {DIMENSIONS.map((d) => (
-            <button
-              key={d.id}
-              disabled={!d.ready}
-              className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
-                d.ready
-                  ? "bg-surface-2 text-foreground"
-                  : "text-muted/60 cursor-not-allowed"
-              }`}
-            >
-              {d.label}
-              {!d.ready && <span className="ml-1 text-[10px] uppercase">soon</span>}
-            </button>
-          ))}
-        </nav>
-      </header>
-
+    <>
       {/* hero */}
       <section className="freedom-glow mb-10 rounded-2xl border border-border bg-surface px-6 py-10 text-center sm:px-10">
         {reached ? (
@@ -210,7 +171,7 @@ export default function FinancialDashboard() {
           </p>
         </ControlGroup>
       </section>
-    </div>
+    </>
   );
 }
 

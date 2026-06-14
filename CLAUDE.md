@@ -7,10 +7,11 @@ dimension you (1) project your goals and *why* they matter, (2) capture your
 current state, then (3) track the trajectory and ETA to the goal. Visual and
 interactive by design — no boring spreadsheets.
 
-**Dimension 1 (in progress): Financial freedom.** Work out your "magic number"
-(what it takes to be financially free), capture current net worth, then see the
-projection and your **freedom date**. Dimensions 2 and 3 (e.g. Time, Health) are
-slots in the same framework, not yet built.
+**Dimension 1 (in progress): Financial freedom.** First **capture the vision &
+goal** — what freedom looks like, *why* it matters, and the target spend (step 1).
+Then work out your "magic number" (what it takes to be financially free), capture
+current net worth, and see the projection and your **freedom date**. Dimensions 2
+and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
 
 ## Architecture
 
@@ -26,6 +27,16 @@ slots in the same framework, not yet built.
 - **Engine** (`src/lib/finance/`): pure, dependency-light, framework-agnostic math
   (magic number, coast number, month-by-month projection). No I/O — unit-testable.
   Validation via zod at the trust boundary (`financialInputsSchema`).
+- **Vision domain** (`src/lib/vision/`): pure data for the vision & goal capture
+  phase — the `FreedomVision` type (headline, why, motivations, FIRE style, target
+  spend/age), motivation + FIRE-style metadata, and the `freedomVisionSchema` zod
+  boundary (ready for persistence; not stored yet).
+- **UI flow** (`src/components/`): `FreedomApp` orchestrates the financial
+  dimension — it owns the `vision` + engine `inputs` (client-side state for now,
+  **not yet persisted**) and shows the guided `onboarding/VisionOnboarding` flow
+  first, then `VisionPanel` (editable, re-opens the flow) + the presentational
+  `FinancialDashboard` (controlled `inputs`/`proj`). The captured goal seeds the
+  dashboard's annual spend so the engine funds the life the user named.
 
 ## Data model & multi-tenancy
 
@@ -36,6 +47,9 @@ slots in the same framework, not yet built.
   another instance's data. Confirm the signed-in user owns/belongs to the instance
   on every read and write.
 - `financialProfiles` holds the engine inputs for an instance.
+- The captured **vision** is **not persisted yet** — it lives in client state. The
+  next step is a per-instance table fed by `freedomVisionSchema`, read/written
+  server-side with the same ownership checks.
 
 ## Security (utmost priority)
 
@@ -81,3 +95,8 @@ persistence will error until `.env.local` is populated and migrations are run.
 
 - Pure engine logic in `src/lib/` (no React, no DB). UI in `src/app` + components.
 - Commit/push only when asked.
+- **Update the docs as part of every feature.** After building or changing
+  functionality, update this `CLAUDE.md` (and any other affected docs) in the same
+  pass so the architecture, data model, and "what's built vs planned" notes stay
+  accurate. This keeps context clears cheap — the next session can pick up from the
+  docs alone.
