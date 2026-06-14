@@ -1,26 +1,42 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Freedom palette — deep, calm, aspirational. Dark-first. */
+  --background: #0a0f0d;
+  --surface: #111815;
+  --surface-2: #18211d;
+  --border: #243029;
+  --foreground: #eaf2ee;
+  --muted: #8da89c;
+
+  /* growth / freedom */
+  --emerald: #34d399;
+  --emerald-dim: #0f7a5a;
+  /* the target / magic number */
+  --gold: #f5be4a;
+  --gold-dim: #8a6a1f;
 }
 
 @theme inline {
   --color-background: var(--background);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-muted: var(--muted);
+  --color-emerald: var(--emerald);
+  --color-gold: var(--gold);
+  --font-display: var(--font-display);
+  --font-sans: var(--font-sans);
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-sans), system-ui, sans-serif;
+}
+
+/* Soft radial glow behind the hero — subtle, not neon. */
+.freedom-glow {
+  background: radial-gradient(60% 60% at 50% 0%, rgba(52, 211, 153, 0.08) 0%, transparent 70%);
 }
