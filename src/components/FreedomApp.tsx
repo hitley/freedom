@@ -3,9 +3,11 @@
 import { useMemo, useState } from "react";
 import { project, type FinancialInputs } from "@/lib/finance";
 import { fireStyleMeta, type FreedomVision } from "@/lib/vision";
+import type { BucketsState } from "@/lib/buckets";
 import VisionOnboarding from "./onboarding/VisionOnboarding";
 import VisionPanel from "./VisionPanel";
 import FinancialDashboard from "./FinancialDashboard";
+import BucketsPanel from "./buckets/BucketsPanel";
 
 /**
  * Reality + assumptions a fresh user starts from. The *goal* side (annual spend)
@@ -29,6 +31,94 @@ const DIMENSIONS = [
 ];
 
 /**
+ * Example buckets that tell the motivating story: money piled into a mortgage
+ * offset, with purposes (emergency / holiday / splurge) carved back out of it
+ * and a chunk left unallocated. Stable ids so SSR and client render match.
+ * Like DEFAULT_INPUTS, this is illustrative starter data, not real figures.
+ */
+const SEED_BUCKETS: BucketsState = {
+  accounts: [
+    { id: "acc-offset", name: "Mortgage offset", kind: "offset", balance: 60_000 },
+    { id: "acc-savings", name: "Savings", kind: "savings", balance: 8_000 },
+  ],
+  buckets: [
+    {
+      id: "b-emergency",
+      name: "Emergency fund",
+      glyph: "🛟",
+      target: 20_000,
+      allocations: [{ accountId: "acc-offset", amount: 15_000 }],
+      cashflows: [
+        {
+          id: "cf-emergency-top-up",
+          label: "Monthly top-up",
+          kind: "in",
+          amount: 300,
+          accountId: "acc-offset",
+          recurrence: { freq: "monthly", startDate: "2026-06-20", dayOfMonth: 20 },
+        },
+      ],
+    },
+    {
+      id: "b-holiday",
+      name: "Holiday fund",
+      glyph: "🏖️",
+      target: 6_000,
+      targetDate: "2026-09-18",
+      allocations: [
+        { accountId: "acc-offset", amount: 1_000 },
+        { accountId: "acc-savings", amount: 1_500 },
+      ],
+      cashflows: [
+        {
+          id: "cf-holiday-save",
+          label: "Weekly saving",
+          kind: "in",
+          amount: 500,
+          accountId: "acc-savings",
+          // Every Friday until the holiday.
+          recurrence: {
+            freq: "weekly",
+            startDate: "2026-06-19",
+            endDate: "2026-09-18",
+            weekday: 5,
+          },
+        },
+        {
+          id: "cf-holiday-spend",
+          label: "Holiday spend",
+          kind: "out",
+          amount: 0,
+          drain: true,
+          accountId: "acc-savings",
+          // Spend whatever's saved, on the day.
+          recurrence: { freq: "once", startDate: "2026-09-18" },
+        },
+      ],
+    },
+    {
+      id: "b-splurge",
+      name: "Splurge",
+      glyph: "✨",
+      target: 3_000,
+      allocations: [{ accountId: "acc-savings", amount: 1_200 }],
+      cashflows: [
+        {
+          id: "cf-splurge-save",
+          label: "Monthly saving",
+          kind: "in",
+          amount: 100,
+          accountId: "acc-savings",
+          recurrence: { freq: "monthly", startDate: "2026-06-28", dayOfMonth: 28 },
+        },
+      ],
+    },
+  ],
+};
+
+type FinancialView = "trajectory" | "buckets";
+
+/**
  * Orchestrates the financial dimension: capture the vision first, then track the
  * numbers. State is client-side for now (no persistence yet) — the vision and the
  * engine inputs live here and flow down to the flow, the panel, and the dashboard.
@@ -37,6 +127,8 @@ export default function FreedomApp() {
   const [vision, setVision] = useState<FreedomVision | null>(null);
   const [editing, setEditing] = useState(false);
   const [inputs, setInputs] = useState<FinancialInputs>(DEFAULT_INPUTS);
+  const [view, setView] = useState<FinancialView>("trajectory");
+  const [buckets, setBuckets] = useState<BucketsState>(SEED_BUCKETS);
 
   const proj = useMemo(() => project(inputs), [inputs]);
 
@@ -99,7 +191,34 @@ export default function FreedomApp() {
             freedomAge={proj.freedomAge}
             onEdit={() => setEditing(true)}
           />
-          <FinancialDashboard inputs={inputs} proj={proj} onChange={onChange} />
+
+          <div className="mb-8 inline-flex gap-1 rounded-full border border-border bg-surface p-1">
+            {(
+              [
+                { id: "trajectory", label: "Trajectory" },
+                { id: "buckets", label: "Buckets" },
+              ] as const
+            ).map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => setView(v.id)}
+                className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+                  view === v.id
+                    ? "bg-surface-2 text-foreground"
+                    : "text-muted hover:text-foreground"
+                }`}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+
+          {view === "trajectory" ? (
+            <FinancialDashboard inputs={inputs} proj={proj} onChange={onChange} />
+          ) : (
+            <BucketsPanel state={buckets} onChange={setBuckets} />
+          )}
         </>
       )}
     </div>

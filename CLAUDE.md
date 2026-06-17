@@ -31,12 +31,33 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   phase — the `FreedomVision` type (headline, why, motivations, FIRE style, target
   spend/age), motivation + FIRE-style metadata, and the `freedomVisionSchema` zod
   boundary (ready for persistence; not stored yet).
+- **Buckets domain** (`src/lib/buckets/`): pure data + helpers for a virtual layer
+  of *purpose* over real accounts. You record each `Account`'s balance, then carve
+  `Allocation` slices into purpose `Bucket`s; a bucket can draw from several
+  accounts. Today-snapshot helpers (`bucketView`, `accountView`, `summarise`) derive
+  each bucket's balance / % funded and — the key insight — each account's
+  **unallocated remainder** (money with no purpose, e.g. spare cash in a mortgage
+  offset). Buckets also carry **`Cashflow`s** (scheduled money in/out): `schedule.ts`
+  is a pure recurrence engine (`occurrences` for once / weekly-on-weekday /
+  monthly-on-day, with intervals + end dates, plus date utils), and `simulate(state,
+  from, to)` replays every cashflow chronologically into a **`Timeline`** of bucket &
+  account balances over time. A dated **`out` + `drain`** flow models a spend event
+  (e.g. a holiday) that empties the bucket on its date; `projectedTargetDate` reads
+  the first date a bucket hits its target. `bucketsStateSchema` is the zod boundary
+  (ready for persistence; not stored yet). Over-allocation is surfaced in the UI, not
+  rejected at the schema.
 - **UI flow** (`src/components/`): `FreedomApp` orchestrates the financial
-  dimension — it owns the `vision` + engine `inputs` (client-side state for now,
-  **not yet persisted**) and shows the guided `onboarding/VisionOnboarding` flow
-  first, then `VisionPanel` (editable, re-opens the flow) + the presentational
-  `FinancialDashboard` (controlled `inputs`/`proj`). The captured goal seeds the
-  dashboard's annual spend so the engine funds the life the user named.
+  dimension — it owns the `vision`, engine `inputs`, and `buckets` (client-side
+  state for now, **not yet persisted**) and shows the guided
+  `onboarding/VisionOnboarding` flow first, then `VisionPanel` (editable, re-opens
+  the flow) above a **Trajectory | Buckets** toggle: `FinancialDashboard`
+  (controlled `inputs`/`proj`; the captured goal seeds its annual spend) and
+  `buckets/BucketsPanel`. The buckets view leads with `buckets/BucketsTimeline` (a
+  hand-built SVG look-ahead chart of projected balances, with a horizon selector and
+  hover scrubber), an accounts strip with an "as of" selector that projects each
+  account forward, and bucket cards; `BucketEditor` (incl. per-bucket scheduled
+  payments) / `AccountsEditor` are modals. Buckets are independent of the projection
+  engine for now — feeding bucket totals into the engine is a future step.
 
 ## Data model & multi-tenancy
 
@@ -47,9 +68,11 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   another instance's data. Confirm the signed-in user owns/belongs to the instance
   on every read and write.
 - `financialProfiles` holds the engine inputs for an instance.
-- The captured **vision** is **not persisted yet** — it lives in client state. The
-  next step is a per-instance table fed by `freedomVisionSchema`, read/written
-  server-side with the same ownership checks.
+- The captured **vision** and the **buckets** state are **not persisted yet** —
+  they live in client state (seeded with illustrative starter data in `FreedomApp`).
+  The next step for each is a per-instance table fed by its zod schema
+  (`freedomVisionSchema` / `bucketsStateSchema`), read/written server-side with the
+  same ownership checks.
 
 ## Security (utmost priority)
 
