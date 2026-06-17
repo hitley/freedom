@@ -65,7 +65,7 @@ export default function VisionOnboarding({
   const back = () => (step === 0 ? onCancel?.() : setStep((s) => s - 1));
 
   return (
-    <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col px-5 py-10 sm:px-8">
+    <div className="mx-auto flex w-full max-w-2xl flex-col">
       {/* progress */}
       <div className="mb-10">
         <div className="mb-3 flex items-center gap-2">
