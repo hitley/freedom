@@ -4,10 +4,12 @@ import { useMemo, useState } from "react";
 import { project, type FinancialInputs } from "@/lib/finance";
 import { fireStyleMeta, type FreedomVision } from "@/lib/vision";
 import type { BucketsState } from "@/lib/buckets";
+import type { InvestmentsState } from "@/lib/investments";
 import VisionOnboarding from "./onboarding/VisionOnboarding";
 import VisionPanel from "./VisionPanel";
 import FinancialDashboard from "./FinancialDashboard";
 import BucketsPanel from "./buckets/BucketsPanel";
+import InvestmentsPanel from "./investments/InvestmentsPanel";
 
 /**
  * Reality + assumptions a fresh user starts from. The *goal* side (annual spend)
@@ -116,7 +118,56 @@ const SEED_BUCKETS: BucketsState = {
   ],
 };
 
-type FinancialView = "trajectory" | "buckets";
+/**
+ * Example holdings that tell the investing story: a super balance growing with
+ * regular contributions, plus two market-priced ETFs/shares valued on units ×
+ * (manual) price, one of them reinvesting its dividends (DRP). Stable ids so SSR
+ * and client render match. Illustrative starter data, not real figures.
+ */
+const SEED_INVESTMENTS: InvestmentsState = {
+  holdings: [
+    {
+      id: "h-super",
+      name: "Workplace super",
+      kind: "super",
+      valuation: "balance",
+      balance: 142_000,
+      expectedReturnPct: 6,
+      contribution: {
+        amount: 1_100,
+        recurrence: { freq: "monthly", startDate: "2026-06-15", dayOfMonth: 15 },
+      },
+    },
+    {
+      id: "h-vas",
+      name: "Vanguard VAS",
+      kind: "etf",
+      valuation: "market",
+      ticker: "VAS",
+      units: 850,
+      pricePerUnit: 96.4,
+      expectedReturnPct: 5,
+      drp: { annualYieldPct: 4, frequency: "quarterly" },
+      contribution: {
+        amount: 500,
+        recurrence: { freq: "monthly", startDate: "2026-06-01", dayOfMonth: 1 },
+      },
+    },
+    {
+      id: "h-cba",
+      name: "CBA shares",
+      kind: "shares",
+      valuation: "market",
+      ticker: "CBA",
+      units: 120,
+      pricePerUnit: 178.2,
+      expectedReturnPct: 4,
+      drp: { annualYieldPct: 3.5, frequency: "semiannual" },
+    },
+  ],
+};
+
+type FinancialView = "trajectory" | "buckets" | "investments";
 
 /**
  * Orchestrates the financial dimension: capture the vision first, then track the
@@ -129,6 +180,7 @@ export default function FreedomApp() {
   const [inputs, setInputs] = useState<FinancialInputs>(DEFAULT_INPUTS);
   const [view, setView] = useState<FinancialView>("trajectory");
   const [buckets, setBuckets] = useState<BucketsState>(SEED_BUCKETS);
+  const [investments, setInvestments] = useState<InvestmentsState>(SEED_INVESTMENTS);
 
   const proj = useMemo(() => project(inputs), [inputs]);
 
@@ -197,6 +249,7 @@ export default function FreedomApp() {
               [
                 { id: "trajectory", label: "Trajectory" },
                 { id: "buckets", label: "Buckets" },
+                { id: "investments", label: "Investments" },
               ] as const
             ).map((v) => (
               <button
@@ -216,8 +269,10 @@ export default function FreedomApp() {
 
           {view === "trajectory" ? (
             <FinancialDashboard inputs={inputs} proj={proj} onChange={onChange} />
-          ) : (
+          ) : view === "buckets" ? (
             <BucketsPanel state={buckets} onChange={setBuckets} />
+          ) : (
+            <InvestmentsPanel state={investments} onChange={setInvestments} />
           )}
         </>
       )}

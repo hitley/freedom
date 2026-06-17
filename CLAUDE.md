@@ -46,13 +46,31 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   the first date a bucket hits its target. `bucketsStateSchema` is the zod boundary
   (ready for persistence; not stored yet). Over-allocation is surfaced in the UI, not
   rejected at the schema.
+- **Investments domain** (`src/lib/investments/`): pure data + helpers for the
+  freedom-generating assets the user holds — super, shares, ETFs. Each `Holding` is
+  valued one of two ways: **`market`** (`units × pricePerUnit` — shares/ETFs, so worth
+  moves with the market) or **`balance`** (a directly-entered value — super, cash). It
+  optionally carries a recurring **`Contribution`** (reusing the buckets recurrence
+  engine) and a **`Drp`** (dividend reinvestment — an annual yield reinvested into the
+  holding, compounding value instead of paying cash). `holdingValue` / `holdingView` /
+  `summarise` give the today snapshot (total, by-kind split, annual contributions +
+  dividends), and `simulate(state, from, to)` projects every holding forward on a
+  monthly grid (compounding growth + reinvested DRP, adding contributions on their real
+  scheduled dates) into an `InvestmentsTimeline`. **Prices are manual for now** — a live
+  feed slots in via the `PriceProvider` seam (`manualPriceProvider` is the default,
+  returning no quotes so holdings value at their stored price; pass a `quotes` map keyed
+  by ticker to override). Investments are deliberately **independent of the projection
+  engine** for now (feeding totals into `currentInvested` is a future step).
+  `investmentsStateSchema` is the zod boundary (ready for persistence; not stored yet).
 - **UI flow** (`src/components/`): `FreedomApp` orchestrates the financial
-  dimension — it owns the `vision`, engine `inputs`, and `buckets` (client-side
-  state for now, **not yet persisted**) and shows the guided
+  dimension — it owns the `vision`, engine `inputs`, `buckets`, and `investments`
+  (client-side state for now, **not yet persisted**) and shows the guided
   `onboarding/VisionOnboarding` flow first, then `VisionPanel` (editable, re-opens
-  the flow) above a **Trajectory | Buckets** toggle: `FinancialDashboard`
-  (controlled `inputs`/`proj`; the captured goal seeds its annual spend) and
-  `buckets/BucketsPanel`. The buckets view leads with `buckets/BucketsTimeline` (a
+  the flow) above a **Trajectory | Buckets | Investments** toggle: `FinancialDashboard`
+  (controlled `inputs`/`proj`; the captured goal seeds its annual spend),
+  `buckets/BucketsPanel`, and `investments/InvestmentsPanel` (portfolio value +
+  by-kind breakdown + 1-year look-ahead, with `investments/HoldingEditor` as the
+  add/edit modal). The buckets view leads with `buckets/BucketsTimeline` (a
   hand-built SVG look-ahead chart of projected balances, with a horizon selector and
   hover scrubber), an accounts strip with an "as of" selector that projects each
   account forward, and bucket cards; `BucketEditor` (incl. per-bucket scheduled
@@ -68,11 +86,11 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   another instance's data. Confirm the signed-in user owns/belongs to the instance
   on every read and write.
 - `financialProfiles` holds the engine inputs for an instance.
-- The captured **vision** and the **buckets** state are **not persisted yet** —
-  they live in client state (seeded with illustrative starter data in `FreedomApp`).
-  The next step for each is a per-instance table fed by its zod schema
-  (`freedomVisionSchema` / `bucketsStateSchema`), read/written server-side with the
-  same ownership checks.
+- The captured **vision**, the **buckets** state, and the **investments** state are
+  **not persisted yet** — they live in client state (seeded with illustrative starter
+  data in `FreedomApp`). The next step for each is a per-instance table fed by its zod
+  schema (`freedomVisionSchema` / `bucketsStateSchema` / `investmentsStateSchema`),
+  read/written server-side with the same ownership checks.
 
 ## Security (utmost priority)
 
@@ -90,6 +108,11 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
 - Start with manual entry + CSV/statement upload. Keep ingestion behind a clean
   interface so Open Banking / Plaid automation can slot in later without touching
   the engine. (No live financial-system integrations yet.)
+- **Market prices** follow the same pattern: the investments domain reads quotes
+  through the `PriceProvider` seam (`src/lib/investments`). The default
+  `manualPriceProvider` returns nothing, so holdings value at their stored price; a
+  live feed (broker/market-data API) implements the same interface later with no
+  change to the domain or UI value math.
 
 ## Getting started (fresh clone)
 
