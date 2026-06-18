@@ -13,6 +13,10 @@ Then work out your "magic number" (what it takes to be financially free), captur
 current net worth, and see the projection and your **freedom date**. Dimensions 2
 and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
 
+> **Future work / ideas live in [`ROADMAP.md`](ROADMAP.md).** This file documents
+> what exists; the roadmap documents what's next and why. Check it when picking up
+> fresh, and keep it current as things ship.
+
 ## Architecture
 
 - **Framework**: Next.js 16 (App Router) + React 19 + Tailwind 4, `src/`. Deploys
