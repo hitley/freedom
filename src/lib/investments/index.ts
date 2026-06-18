@@ -6,6 +6,7 @@ import {
   startOfDay,
 } from "@/lib/buckets";
 import type {
+  HistoryPeriod,
   Holding,
   HoldingView,
   InvestmentsState,
@@ -75,6 +76,34 @@ export function annualDividend(
 ): number {
   if (!holding.drp) return 0;
   return holdingValue(holding, quotes) * (holding.drp.annualYieldPct / 100);
+}
+
+/**
+ * Derive each period of a holding's recorded history. Snapshots are sorted oldest
+ * first, then for each one we compute the investment growth over the period since
+ * the previous snapshot: `value - prevValue - contributed`. The contributions are
+ * stripped out so growth reflects the market/return, not money you added. The
+ * first record has nothing to compare against, so its growth is null.
+ */
+export function holdingHistory(holding: Holding): HistoryPeriod[] {
+  const snaps = [...(holding.history ?? [])].sort((a, b) =>
+    a.date < b.date ? -1 : a.date > b.date ? 1 : 0,
+  );
+  return snaps.map((s, i) => {
+    const prev = i > 0 ? snaps[i - 1] : null;
+    const contributed = s.contributed ?? 0;
+    const prevValue = prev ? prev.value : null;
+    const growth = prevValue === null ? null : s.value - prevValue - contributed;
+    const base = prevValue === null ? 0 : prevValue + contributed;
+    return {
+      date: s.date,
+      value: s.value,
+      prevValue,
+      contributed,
+      growth,
+      growthPct: growth === null || base <= 0 ? null : (growth / base) * 100,
+    };
+  });
 }
 
 /** Monthly growth rate folding in expected return and any reinvested dividend yield. */
@@ -174,6 +203,60 @@ export function simulate(
   return timeline;
 }
 
+/** A single holding's projected value path, aligned to `dates`. */
+export interface HoldingProjection {
+  dates: Date[];
+  /** Projected value at each marker. */
+  value: number[];
+  /** Cumulative contributions added by each marker (for the stacked breakdown). */
+  contributed: number[];
+}
+
+/**
+ * Project one holding forward on a monthly grid for the detail-view what-if. Unlike
+ * `simulate`, the two key levers are passed explicitly so the UI can offer live
+ * sliders: a flat `monthlyContribution` (money added each month) and a single
+ * `annualGrowthPct` (which already folds in any reinvested dividend). Compounding
+ * matches `simulate` — one month of growth, then the month's contribution.
+ */
+export function projectHolding(
+  startValue: number,
+  from: Date,
+  to: Date,
+  monthlyContribution: number,
+  annualGrowthPct: number,
+): HoldingProjection {
+  const start = startOfDay(from);
+  const end = startOfDay(to);
+  const monthly = annualGrowthPct / 100 / 12;
+
+  const proj: HoldingProjection = { dates: [], value: [], contributed: [] };
+  let value = startValue;
+  let contributed = 0;
+  let first = true;
+  for (let d = start; d.getTime() <= end.getTime(); d = addMonths(d, 1)) {
+    if (!first) {
+      value = value * (1 + monthly) + monthlyContribution;
+      contributed += monthlyContribution;
+    }
+    first = false;
+    proj.dates.push(d);
+    proj.value.push(value);
+    proj.contributed.push(contributed);
+  }
+  return proj;
+}
+
+/** The monthly-equivalent of a holding's recurring contribution (annual ÷ 12). */
+export function monthlyContribution(holding: Holding): number {
+  return annualContribution(holding) / 12;
+}
+
+/** A holding's assumed annual growth, including reinvested dividend yield. */
+export function assumedAnnualGrowthPct(holding: Holding): number {
+  return (holding.expectedReturnPct ?? 0) + (holding.drp?.annualYieldPct ?? 0);
+}
+
 /** Whole-portfolio rollup for the summary header. */
 export function summarise(
   state: InvestmentsState,
@@ -234,6 +317,12 @@ export const drpSchema = z.object({
   frequency: z.enum(DIVIDEND_FREQS.map((f) => f.id) as [string, ...string[]]),
 });
 
+export const holdingSnapshotSchema = z.object({
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected a YYYY-MM-DD date"),
+  value: MONEY,
+  contributed: MONEY.optional(),
+});
+
 export const holdingSchema = z
   .object({
     id: z.string().min(1),
@@ -247,6 +336,7 @@ export const holdingSchema = z
     expectedReturnPct: PERCENT.optional(),
     contribution: contributionSchema.optional(),
     drp: drpSchema.optional(),
+    history: z.array(holdingSnapshotSchema).optional(),
   })
   .refine(
     (h) =>

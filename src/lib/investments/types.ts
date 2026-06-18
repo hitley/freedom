@@ -30,6 +30,22 @@ export type HoldingKind = "super" | "shares" | "etf" | "cash" | "other";
  */
 export type Valuation = "market" | "balance";
 
+/**
+ * A recorded point in a holding's past: what it was actually worth on a date, and
+ * how much money you put in over the period leading up to it. Consecutive snapshots
+ * let us derive the *growth* for each period — `value - prevValue - contributed` —
+ * which is the figure you can't read off either number alone. Entered manually
+ * (e.g. yearly super statements); see `holdingHistory` in `index.ts`.
+ */
+export interface HoldingSnapshot {
+  /** When this value was recorded — a date-only ISO string (e.g. "2024-06-30"). */
+  date: string;
+  /** The holding's value on that date, in GBP. */
+  value: number;
+  /** Money contributed over the period since the previous snapshot, in GBP. */
+  contributed?: number;
+}
+
 /** A recurring money-in to a holding (super contribution, regular ETF buy). */
 export interface Contribution {
   /** Amount per occurrence, in GBP. */
@@ -74,6 +90,8 @@ export interface Holding {
   contribution?: Contribution;
   /** Optional dividend reinvestment plan (typically on `market` holdings). */
   drp?: Drp;
+  /** Optional recorded past values, oldest-first by date — the tracking history. */
+  history?: HoldingSnapshot[];
 }
 
 /** The full client-side state: every holding the user tracks. */
@@ -111,6 +129,25 @@ export interface HoldingView {
   annualContribution: number;
   /** Estimated dividend over a year (reinvested if DRP, else cash income). */
   annualDividend: number;
+}
+
+/**
+ * One period in a holding's history, derived from consecutive snapshots. The
+ * first period has no `prevValue`/`growth` (nothing to compare against).
+ */
+export interface HistoryPeriod {
+  /** The snapshot this period ends on. */
+  date: string;
+  /** Value at the end of the period. */
+  value: number;
+  /** Value at the previous snapshot, or null for the first record. */
+  prevValue: number | null;
+  /** Money contributed during the period. */
+  contributed: number;
+  /** Investment growth over the period: `value - prevValue - contributed`. */
+  growth: number | null;
+  /** Growth as a percent of the opening base (`prevValue + contributed`). */
+  growthPct: number | null;
 }
 
 /** Whole-portfolio rollup for the summary header. */

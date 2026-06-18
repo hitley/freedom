@@ -56,7 +56,15 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   `summarise` give the today snapshot (total, by-kind split, annual contributions +
   dividends), and `simulate(state, from, to)` projects every holding forward on a
   monthly grid (compounding growth + reinvested DRP, adding contributions on their real
-  scheduled dates) into an `InvestmentsTimeline`. **Prices are manual for now** — a live
+  scheduled dates) into an `InvestmentsTimeline`. A holding can also carry recorded
+  **`history`** (manual `HoldingSnapshot`s — value + money paid in on a date, e.g.
+  yearly super statements); `holdingHistory` derives each period's **growth** by
+  stripping out contributions (`value − prevValue − contributed`), the figure the detail
+  view charts and tables. `projectHolding(start, from, to, monthlyContribution,
+  annualGrowthPct)` is a single-holding what-if projection with the two levers passed
+  explicitly (so the detail view can drive live sliders), with `monthlyContribution` /
+  `assumedAnnualGrowthPct` helpers seeding those levers from the holding.
+  **Prices are manual for now** — a live
   feed slots in via the `PriceProvider` seam (`manualPriceProvider` is the default,
   returning no quotes so holdings value at their stored price; pass a `quotes` map keyed
   by ticker to override). Investments are deliberately **independent of the projection
@@ -70,7 +78,13 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   (controlled `inputs`/`proj`; the captured goal seeds its annual spend),
   `buckets/BucketsPanel`, and `investments/InvestmentsPanel` (portfolio value +
   by-kind breakdown + 1-year look-ahead, with `investments/HoldingEditor` as the
-  add/edit modal). The buckets view leads with `buckets/BucketsTimeline` (a
+  add/edit modal — which also captures the per-holding `history`). Clicking a holding
+  tile **maximises** it into `investments/HoldingDetail`: one timeline showing the
+  recorded past (solid line, left of a "today" divider) flowing into a dashed
+  projection (right of it), driven by live what-if sliders (monthly contribution +
+  estimated growth %, seeded from the holding but non-destructive), with a year-by-year
+  growth breakdown below; "Minimise" returns to the overview. The buckets view leads
+  with `buckets/BucketsTimeline` (a
   hand-built SVG look-ahead chart of projected balances, with a horizon selector and
   hover scrubber), an accounts strip with an "as of" selector that projects each
   account forward, and bucket cards; `BucketEditor` (incl. per-bucket scheduled
@@ -132,10 +146,34 @@ persistence will error until `.env.local` is populated and migrations are run.
 ## Commands
 
 - `npm run dev` — local app at http://localhost:3000.
+- `npm test` — Vitest (pure-`lib` unit tests); `npm run test:watch` to watch.
 - `npm run lint` — Next.js lint. Type-check: `npx tsc --noEmit`.
 - `npx drizzle-kit generate` — create a migration from schema changes.
 - `npx drizzle-kit migrate` — apply migrations to `DATABASE_URL`.
 - `npx auth secret` — generate `AUTH_SECRET`.
+
+## Patterns (follow these — they save re-deriving from source)
+
+- **A finance domain = four files in the same shape** (see `buckets`, `investments`):
+  `types.ts` (plain data, no imports beyond sibling types), `index.ts` (pure helpers +
+  the `zod` boundary schema + `export *` of the types), then UI as a `*Panel`
+  (summary + list, owns no state — parent passes `state` + `onChange`) and an
+  `*Editor` **modal** (assembles one item, returns it via `onSave`). Reuse the
+  recurrence engine (`occurrences`, `addMonths`, `startOfDay`, `toISO`) from
+  `@/lib/buckets` rather than reinventing scheduling.
+- **Test the pure domain, not the UI.** Each `src/lib/<domain>` gets an
+  `index.test.ts` next to it (Vitest, Node env, `@` alias works). The domains are
+  designed I/O-free precisely so this is cheap — add cases when you add helpers.
+- **Tailwind exposes only the base palette** (`emerald`, `gold`, `muted`, `surface`,
+  `surface-2`, `border`, `foreground` — see `@theme inline` in `globals.css`). There
+  is **no** `-dim` utility; shade with opacity (`bg-emerald/50`), not `bg-emerald-dim`.
+- **Shared form primitives** (`MoneyInput`, `PercentInput`, `Field`, `Select`,
+  `DateInput`) are currently copy-pasted per editor — match the existing copy; a
+  shared module is a future tidy-up.
+- **Previewing locally:** the app's dev server runs on **port 3100** (the launch
+  config `freedom-dev` in `.claude/launch.json` pins it, so it never collides with
+  other repos on 3000). The Investments/Buckets views only mount **after** the vision
+  onboarding completes — drive that flow first when verifying in a browser.
 
 ## Conventions
 

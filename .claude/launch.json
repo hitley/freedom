@@ -4,8 +4,8 @@
     {
       "name": "freedom-dev",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--prefix", "/Users/hitley/code/freedom"],
-      "port": 3000
+      "runtimeArgs": ["run", "dev", "--prefix", "/Users/hitley/code/freedom", "--", "-p", "3100"],
+      "port": 3100
     }
   ]
 }

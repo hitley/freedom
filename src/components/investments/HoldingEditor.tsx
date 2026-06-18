@@ -5,11 +5,13 @@ import { toISO, WEEKDAYS } from "@/lib/buckets";
 import {
   DIVIDEND_FREQS,
   HOLDING_KINDS,
+  holdingHistory,
   holdingValue,
   type Contribution,
   type Drp,
   type Holding,
   type HoldingKind,
+  type HoldingSnapshot,
   type Valuation,
 } from "@/lib/investments";
 
@@ -73,6 +75,7 @@ export default function HoldingEditor({
     holding.contribution ?? null,
   );
   const [drp, setDrp] = useState<Drp | null>(holding.drp ?? null);
+  const [history, setHistory] = useState<HoldingSnapshot[]>(holding.history ?? []);
 
   const canSave =
     name.trim().length > 0 &&
@@ -107,6 +110,7 @@ export default function HoldingEditor({
       expectedReturnPct: num(growth) > 0 ? num(growth) : undefined,
       contribution: contribution && contribution.amount > 0 ? contribution : undefined,
       drp: drp && drp.annualYieldPct > 0 ? drp : undefined,
+      history: history.length > 0 ? cleanHistory(history) : undefined,
     };
     onSave(
       valuation === "market"
@@ -279,6 +283,20 @@ export default function HoldingEditor({
           )}
         </Toggle>
 
+        {/* tracking history */}
+        <Toggle
+          label="Tracking history"
+          hint="past values you've recorded (e.g. yearly statements) — growth is worked out for you"
+          on={history.length > 0}
+          onToggle={(on) =>
+            setHistory(on ? [{ date: todayISO(), value: 0 }] : [])
+          }
+        >
+          {history.length > 0 && (
+            <HistoryRows history={history} onChange={setHistory} />
+          )}
+        </Toggle>
+
         {/* actions */}
         <div className="mt-7 flex items-center justify-between">
           {existing ? (
@@ -311,6 +329,108 @@ export default function HoldingEditor({
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+/** Drop blank rows and sort oldest-first before saving. */
+const cleanHistory = (history: HoldingSnapshot[]): HoldingSnapshot[] =>
+  history
+    .filter((s) => s.date && s.value >= 0)
+    .map((s) => ({
+      date: s.date,
+      value: s.value,
+      contributed: s.contributed && s.contributed > 0 ? s.contributed : undefined,
+    }))
+    .sort((a, b) => (a.date < b.date ? -1 : a.date > b.date ? 1 : 0));
+
+/**
+ * The history sub-form: a row per recorded snapshot (date, value, money paid in).
+ * The derived growth for each period is shown read-only so you can sanity-check the
+ * numbers as you type. Rows are sorted on save, so order of entry doesn't matter.
+ */
+function HistoryRows({
+  history,
+  onChange,
+}: {
+  history: HoldingSnapshot[];
+  onChange: (next: HoldingSnapshot[]) => void;
+}) {
+  const setRow = (i: number, patch: Partial<HoldingSnapshot>) =>
+    onChange(history.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+  const removeRow = (i: number) => onChange(history.filter((_, j) => j !== i));
+  const addRow = () =>
+    onChange([...history, { date: todayISO(), value: 0 }]);
+
+  // Derived growth per period, keyed by the snapshot's identity (date + value).
+  const periods = holdingHistory({
+    id: "preview",
+    name: "",
+    kind: "other",
+    valuation: "balance",
+    history,
+  });
+  const periodFor = (s: HoldingSnapshot) =>
+    periods.find((p) => p.date === s.date && p.value === s.value);
+
+  return (
+    <div className="space-y-2">
+      <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-2 text-[11px] uppercase tracking-wide text-muted">
+        <span>Date</span>
+        <span>Value</span>
+        <span>Paid in</span>
+        <span className="w-6" />
+      </div>
+      {history.map((s, i) => {
+        const p = periodFor(s);
+        return (
+          <div key={i} className="space-y-1">
+            <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-2">
+              <input
+                type="date"
+                value={s.date}
+                onChange={(e) => setRow(i, { date: e.target.value })}
+                className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm outline-none focus:border-emerald"
+              />
+              <MoneyInput
+                value={s.value ? String(s.value) : ""}
+                onChange={(v) => setRow(i, { value: Number(v) || 0 })}
+                placeholder="80000"
+              />
+              <MoneyInput
+                value={s.contributed ? String(s.contributed) : ""}
+                onChange={(v) => setRow(i, { contributed: Number(v) || 0 })}
+                placeholder="12000"
+              />
+              <button
+                type="button"
+                onClick={() => removeRow(i)}
+                aria-label="Remove row"
+                className="flex h-7 w-7 items-center justify-center rounded-full text-muted transition-colors hover:text-gold"
+              >
+                ✕
+              </button>
+            </div>
+            {p && p.growth !== null && (
+              <div className="pl-1 text-[11px] text-muted">
+                growth this period:{" "}
+                <span className={p.growth >= 0 ? "text-emerald" : "text-gold"}>
+                  {p.growth >= 0 ? "+" : ""}
+                  {gbp0.format(p.growth)}
+                  {p.growthPct !== null && ` (${p.growthPct >= 0 ? "+" : ""}${p.growthPct.toFixed(1)}%)`}
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        onClick={addRow}
+        className="rounded-full border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:border-muted/50 hover:text-foreground"
+      >
+        + Add record
+      </button>
     </div>
   );
 }

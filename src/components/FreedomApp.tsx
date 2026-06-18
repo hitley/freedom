@@ -137,6 +137,16 @@ const SEED_INVESTMENTS: InvestmentsState = {
         amount: 1_100,
         recurrence: { freq: "monthly", startDate: "2026-06-15", dayOfMonth: 15 },
       },
+      // Six years of recorded balances — value at each year-end and the amount
+      // paid in over that year, so per-year growth can be derived. Illustrative.
+      history: [
+        { date: "2020-06-30", value: 78_000 },
+        { date: "2021-06-30", value: 96_500, contributed: 12_000 },
+        { date: "2022-06-30", value: 104_000, contributed: 12_400 },
+        { date: "2023-06-30", value: 118_500, contributed: 12_800 },
+        { date: "2024-06-30", value: 131_000, contributed: 13_000 },
+        { date: "2025-06-30", value: 142_000, contributed: 13_200 },
+      ],
     },
     {
       id: "h-vas",

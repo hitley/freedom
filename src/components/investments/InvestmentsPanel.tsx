@@ -11,6 +11,7 @@ import {
   type Quote,
 } from "@/lib/investments";
 import HoldingEditor from "./HoldingEditor";
+import HoldingDetail from "./HoldingDetail";
 
 const gbp0 = new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -57,6 +58,8 @@ export default function InvestmentsPanel({
 }) {
   // null = closed; a Holding = editing/adding that holding.
   const [editing, setEditing] = useState<Holding | null>(null);
+  // null = overview; a holding id = its maximised detail view.
+  const [detailId, setDetailId] = useState<string | null>(null);
 
   const summary = useMemo(() => summarise(state, quotes), [state, quotes]);
   const growth = summary.projectedValue1y - summary.totalValue;
@@ -74,7 +77,32 @@ export default function InvestmentsPanel({
   const deleteHolding = (id: string) => {
     onChange({ holdings: state.holdings.filter((h) => h.id !== id) });
     setEditing(null);
+    if (detailId === id) setDetailId(null);
   };
+
+  // Maximised single-holding view. The editor can still open on top of it.
+  const detailHolding = state.holdings.find((h) => h.id === detailId);
+  if (detailHolding) {
+    return (
+      <>
+        <HoldingDetail
+          holding={detailHolding}
+          quotes={quotes}
+          onEdit={() => setEditing(detailHolding)}
+          onClose={() => setDetailId(null)}
+        />
+        {editing && (
+          <HoldingEditor
+            holding={editing}
+            existing={state.holdings.some((h) => h.id === editing.id)}
+            onSave={saveHolding}
+            onDelete={deleteHolding}
+            onCancel={() => setEditing(null)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <section>
@@ -156,7 +184,16 @@ export default function InvestmentsPanel({
             return (
               <div
                 key={holding.id}
-                className="rounded-2xl border border-border bg-surface p-5"
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailId(holding.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setDetailId(holding.id);
+                  }
+                }}
+                className="cursor-pointer rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-muted/50"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
@@ -174,7 +211,10 @@ export default function InvestmentsPanel({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setEditing(holding)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditing(holding);
+                    }}
                     className="shrink-0 rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-muted/50 hover:text-foreground"
                   >
                     Edit
