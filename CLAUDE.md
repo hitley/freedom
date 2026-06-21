@@ -84,16 +84,24 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   `getDefaultInstance` (read-only; `null` if none), `getOrCreateDefaultInstance`
   (write-path only — lazily provisions the workspace on first save, so renders never
   mutate), and `requireInstance(id)` (ownership check for client-named instances).
-  `financial-profile.ts` is the first domain wired through it: `loadFinancialProfile`
+  `financial-profile.ts` was the first domain wired through it: `loadFinancialProfile`
   / `saveFinancialProfile`, crossing the `financialInputsSchema` zod boundary in *and*
-  out and upserting on the unique `instanceId`. Thin `"use server"` actions in
+  out and upserting on the unique `instanceId`. The `vision`, `buckets`, and
+  `investments` domains follow the same shape (`vision.ts` / `buckets.ts` /
+  `investments.ts`) but store a **single jsonb document** per instance (validated
+  through each domain's zod schema on read/write) instead of typed columns — the data
+  is a nested document the app reads/writes whole. Thin `"use server"` actions in
   `src/app/actions.ts` delegate here; auth + validation live in the DAL, never the
   action.
 - **UI flow** (`src/components/`): `FreedomApp` orchestrates the financial
-  dimension. The engine `inputs` are **persisted per-instance** — seeded from the
-  server (`loadFinancialProfile` in `src/app/page.tsx`) and saved debounced via the
-  `saveInputsAction` prop on change. The `vision`, `buckets`, and `investments` are
-  still client-only (**not yet persisted**). The home page is **auth-gated**
+  dimension. **All four domains are persisted per-instance** — `page.tsx` loads
+  `inputs` / `vision` / `buckets` / `investments` server-side (`Promise.all` of the
+  four `load*` DAL fns) and passes them as initial props; `FreedomApp` saves changes
+  through the matching `save*Action` props. `inputs`, `buckets`, and `investments` save
+  **debounced** (via the `useDebouncedSave` hook, which skips the first run so seeding
+  doesn't write back); the `vision` is saved **explicitly** when the capture flow
+  completes. Each `load*` returns `null` for a fresh instance, so the UI falls back to
+  `DEFAULT_INPUTS` / onboarding / the illustrative seeds. The home page is **auth-gated**
   (`page.tsx` redirects to `/signin` without a session; `src/app/signin/page.tsx` is
   the Google sign-in; a sign-out form sits in the header). It shows the guided
   `onboarding/VisionOnboarding` flow first, then `VisionPanel` (editable, re-opens
@@ -124,15 +132,12 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   on every read and write. This is centralised in the **DAL** (`src/lib/server/`,
   see Architecture) — resolve the instance from the session, never from a
   client-supplied id, so there's no IDOR surface.
-- `financialProfiles` holds the engine inputs for an instance (one row per instance —
-  `instanceId` is unique). It is **wired end-to-end**: loaded server-side on render
-  and saved via the `saveFinancialProfileAction`. The user's default instance is
-  lazily created on first save.
-- The captured **vision**, the **buckets** state, and the **investments** state are
-  **not persisted yet** — they live in client state (seeded with illustrative starter
-  data in `FreedomApp`). The next step for each is a per-instance table fed by its zod
-  schema (`freedomVisionSchema` / `bucketsStateSchema` / `investmentsStateSchema`),
-  read/written server-side with the same ownership checks.
+- `financialProfiles` holds the engine inputs for an instance as typed columns; the
+  captured **vision**, **buckets**, and **investments** state are each a per-instance
+  **jsonb document** (`vision_state` / `buckets_state` / `investments_state`). All four
+  are **wired end-to-end** (one row per instance — `instanceId` is unique — loaded
+  server-side on render and saved via their `save*Action`s, each validated through its
+  zod schema). The user's default instance is lazily created on first save.
 
 ## Security (utmost priority)
 

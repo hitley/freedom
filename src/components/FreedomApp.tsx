@@ -181,41 +181,16 @@ type FinancialView = "trajectory" | "buckets" | "investments";
 
 type SaveState = "idle" | "saving" | "saved";
 
-interface FreedomAppProps {
-  /** Persisted engine inputs for this instance, or null to use the defaults. */
-  initialInputs: FinancialInputs | null;
-  /** Server action persisting the engine inputs (auth/validation server-side). */
-  saveInputsAction: (inputs: FinancialInputs) => Promise<{ ok: true }>;
-  /** Server action that signs the user out. */
-  signOutAction: () => Promise<void>;
-  /** Display name (or email) of the signed-in user. */
-  userName: string | null;
-}
-
 /**
- * Orchestrates the financial dimension: capture the vision first, then track the
- * numbers. The engine inputs are persisted per-instance — seeded from the server
- * on load and saved (debounced) on change. The vision, buckets, and investments
- * are still client-only (persistence for those is the next step).
+ * Debounced persistence of a piece of state. Skips the first run so simply
+ * loading the page (seeding state from the server) doesn't trigger a redundant
+ * write; thereafter it saves the latest value 700ms after changes settle.
  */
-export default function FreedomApp({
-  initialInputs,
-  saveInputsAction,
-  signOutAction,
-  userName,
-}: FreedomAppProps) {
-  const [vision, setVision] = useState<FreedomVision | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [inputs, setInputs] = useState<FinancialInputs>(initialInputs ?? DEFAULT_INPUTS);
-  const [view, setView] = useState<FinancialView>("trajectory");
-  const [buckets, setBuckets] = useState<BucketsState>(SEED_BUCKETS);
-  const [investments, setInvestments] = useState<InvestmentsState>(SEED_INVESTMENTS);
-  const [saveState, setSaveState] = useState<SaveState>("idle");
-
-  const proj = useMemo(() => project(inputs), [inputs]);
-
-  // Debounced persistence of the engine inputs. Skip the first run so simply
-  // loading the page doesn't trigger a redundant write.
+function useDebouncedSave<T>(
+  value: T,
+  save: (value: T) => Promise<unknown>,
+  setSaveState: (s: SaveState) => void,
+) {
   const firstRun = useRef(true);
   useEffect(() => {
     if (firstRun.current) {
@@ -225,14 +200,75 @@ export default function FreedomApp({
     setSaveState("saving");
     const timer = setTimeout(async () => {
       try {
-        await saveInputsAction(inputs);
+        await save(value);
         setSaveState("saved");
       } catch {
         setSaveState("idle");
       }
     }, 700);
     return () => clearTimeout(timer);
-  }, [inputs, saveInputsAction]);
+  }, [value, save, setSaveState]);
+}
+
+interface FreedomAppProps {
+  /** Persisted engine inputs for this instance, or null to use the defaults. */
+  initialInputs: FinancialInputs | null;
+  /** Persisted vision, or null if not captured yet (then onboarding runs). */
+  initialVision: FreedomVision | null;
+  /** Persisted buckets state, or null to use the illustrative seed. */
+  initialBuckets: BucketsState | null;
+  /** Persisted investments state, or null to use the illustrative seed. */
+  initialInvestments: InvestmentsState | null;
+  /** Server action persisting the engine inputs (auth/validation server-side). */
+  saveInputsAction: (inputs: FinancialInputs) => Promise<{ ok: true }>;
+  /** Server action persisting the captured vision. */
+  saveVisionAction: (vision: FreedomVision) => Promise<{ ok: true }>;
+  /** Server action persisting the buckets state. */
+  saveBucketsAction: (buckets: BucketsState) => Promise<{ ok: true }>;
+  /** Server action persisting the investments state. */
+  saveInvestmentsAction: (investments: InvestmentsState) => Promise<{ ok: true }>;
+  /** Server action that signs the user out. */
+  signOutAction: () => Promise<void>;
+  /** Display name (or email) of the signed-in user. */
+  userName: string | null;
+}
+
+/**
+ * Orchestrates the financial dimension: capture the vision first, then track the
+ * numbers. Every domain is persisted per-instance — seeded from the server on
+ * load and saved (debounced) on change. The vision is saved explicitly when the
+ * capture flow completes.
+ */
+export default function FreedomApp({
+  initialInputs,
+  initialVision,
+  initialBuckets,
+  initialInvestments,
+  saveInputsAction,
+  saveVisionAction,
+  saveBucketsAction,
+  saveInvestmentsAction,
+  signOutAction,
+  userName,
+}: FreedomAppProps) {
+  const [vision, setVision] = useState<FreedomVision | null>(initialVision);
+  const [editing, setEditing] = useState(false);
+  const [inputs, setInputs] = useState<FinancialInputs>(initialInputs ?? DEFAULT_INPUTS);
+  const [view, setView] = useState<FinancialView>("trajectory");
+  const [buckets, setBuckets] = useState<BucketsState>(initialBuckets ?? SEED_BUCKETS);
+  const [investments, setInvestments] = useState<InvestmentsState>(
+    initialInvestments ?? SEED_INVESTMENTS,
+  );
+  const [saveState, setSaveState] = useState<SaveState>("idle");
+
+  const proj = useMemo(() => project(inputs), [inputs]);
+
+  // Debounced persistence of each editable domain (vision is saved explicitly on
+  // completion). The hook skips its first run so seeding from the server doesn't
+  // write back.
+  useDebouncedSave(inputs, saveInputsAction, setSaveState);
+  useDebouncedSave(buckets, saveBucketsAction, setSaveState);
+  useDebouncedSave(investments, saveInvestmentsAction, setSaveState);
 
   const onChange = (key: keyof FinancialInputs, value: number) =>
     setInputs((prev) => ({ ...prev, [key]: value }));
@@ -249,6 +285,12 @@ export default function FreedomApp({
           : prev.ongoingAnnualIncome,
     }));
     setEditing(false);
+    // Persist the captured vision immediately (not debounced — it's a deliberate
+    // commit, and `inputs` is saved separately by its own debounced effect).
+    setSaveState("saving");
+    saveVisionAction(v)
+      .then(() => setSaveState("saved"))
+      .catch(() => setSaveState("idle"));
   };
 
   const showFlow = vision === null || editing;

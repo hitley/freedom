@@ -19,11 +19,10 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   deliberately independent of `src/lib/finance`. Wire portfolio totals into the
   engine's `currentInvested` so the freedom-date trajectory reflects real holdings.
   (Same open question for feeding bucket totals in.)
-- **Persistence — the big one.** The captured vision, buckets state, and investments
-  state all live in client state with no DB table yet; their zod schemas
-  (`freedomVisionSchema` / `bucketsStateSchema` / `investmentsStateSchema`) are ready.
-  Add a per-instance table for each, read/written server-side with the same ownership
-  checks as `financialProfiles`. This unblocks everything real/shared. **Plan below.**
+- **Persistence — ✅ done (financial dimension).** All four domains (engine inputs,
+  vision, buckets, investments) now round-trip through Postgres, read/written
+  server-side with owner-scoped checks and zod validation. The plan and build log are
+  retained below for reference.
 
   ### Persistence plan (decided 2026-06-19)
 
@@ -76,9 +75,17 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   3. ✅ `financialProfiles` wired end-to-end (`loadFinancialProfile` on render,
      `saveFinancialProfileAction` debounced from `FreedomApp`) + `/signin` page and
      auth gating, since the app had no way to sign in before.
-  4. Add the three JSONB tables + their generate/migrate.
-  5. Wire `vision`, then `buckets`, then `investments` through the same pattern.
-  6. Update `CLAUDE.md` (flip each domain's "not persisted yet" note as it lands).
+  4. ✅ Added the three JSONB tables (`vision_state` / `buckets_state` /
+     `investments_state`, `instanceId` unique + `data jsonb`) — migration
+     `drizzle/0001_*.sql`, applied to Neon.
+  5. ✅ Wired `vision` / `buckets` / `investments` through DAL + actions, loaded in
+     `page.tsx` and saved from `FreedomApp` (buckets/investments debounced via
+     `useDebouncedSave`; vision saved on capture completion).
+  6. ✅ `CLAUDE.md` updated (all four domains now persisted).
+
+  **Persistence is now complete for the financial dimension.** All four domains
+  round-trip through Postgres with the same auth-gated, zod-validated, owner-scoped
+  pattern.
 
   **DB is live; sign-in not yet exercised.** Steps 1–3 are written, type-check/lint/test
   clean, and the schema is migrated into Neon. Sign-in still needs a Google OAuth client

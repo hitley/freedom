@@ -6,6 +6,7 @@ import {
   numeric,
   primaryKey,
   uuid,
+  jsonb,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 
@@ -96,5 +97,44 @@ export const financialProfiles = pgTable("financial_profile", {
   withdrawalRatePct: numeric("withdrawal_rate_pct", { mode: "number" }).notNull().default(4),
   ongoingAnnualIncome: numeric("ongoing_annual_income", { mode: "number" }).default(0),
   currentAge: integer("current_age"),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+/**
+ * Document-per-domain state for an instance. The vision / buckets / investments
+ * domains are each a nested document the app reads and writes whole, with a zod
+ * schema (`freedomVisionSchema` / `bucketsStateSchema` / `investmentsStateSchema`)
+ * as the validation boundary — so we store the validated blob in a `jsonb` column
+ * rather than normalising into relational tables. One row per instance
+ * (`instanceId` unique) so the save path upserts. The `data` column is left
+ * untyped here; the DAL parses it through the domain's zod schema on read/write.
+ */
+export const visionStates = pgTable("vision_state", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  instanceId: uuid("instance_id")
+    .notNull()
+    .unique()
+    .references(() => instances.id, { onDelete: "cascade" }),
+  data: jsonb("data").notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+export const bucketsStates = pgTable("buckets_state", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  instanceId: uuid("instance_id")
+    .notNull()
+    .unique()
+    .references(() => instances.id, { onDelete: "cascade" }),
+  data: jsonb("data").notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});
+
+export const investmentsStates = pgTable("investments_state", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  instanceId: uuid("instance_id")
+    .notNull()
+    .unique()
+    .references(() => instances.id, { onDelete: "cascade" }),
+  data: jsonb("data").notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
