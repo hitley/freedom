@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { project, type FinancialInputs } from "@/lib/finance";
 import { fireStyleMeta, type FreedomVision } from "@/lib/vision";
 import type { BucketsState } from "@/lib/buckets";
@@ -179,20 +179,60 @@ const SEED_INVESTMENTS: InvestmentsState = {
 
 type FinancialView = "trajectory" | "buckets" | "investments";
 
+type SaveState = "idle" | "saving" | "saved";
+
+interface FreedomAppProps {
+  /** Persisted engine inputs for this instance, or null to use the defaults. */
+  initialInputs: FinancialInputs | null;
+  /** Server action persisting the engine inputs (auth/validation server-side). */
+  saveInputsAction: (inputs: FinancialInputs) => Promise<{ ok: true }>;
+  /** Server action that signs the user out. */
+  signOutAction: () => Promise<void>;
+  /** Display name (or email) of the signed-in user. */
+  userName: string | null;
+}
+
 /**
  * Orchestrates the financial dimension: capture the vision first, then track the
- * numbers. State is client-side for now (no persistence yet) — the vision and the
- * engine inputs live here and flow down to the flow, the panel, and the dashboard.
+ * numbers. The engine inputs are persisted per-instance — seeded from the server
+ * on load and saved (debounced) on change. The vision, buckets, and investments
+ * are still client-only (persistence for those is the next step).
  */
-export default function FreedomApp() {
+export default function FreedomApp({
+  initialInputs,
+  saveInputsAction,
+  signOutAction,
+  userName,
+}: FreedomAppProps) {
   const [vision, setVision] = useState<FreedomVision | null>(null);
   const [editing, setEditing] = useState(false);
-  const [inputs, setInputs] = useState<FinancialInputs>(DEFAULT_INPUTS);
+  const [inputs, setInputs] = useState<FinancialInputs>(initialInputs ?? DEFAULT_INPUTS);
   const [view, setView] = useState<FinancialView>("trajectory");
   const [buckets, setBuckets] = useState<BucketsState>(SEED_BUCKETS);
   const [investments, setInvestments] = useState<InvestmentsState>(SEED_INVESTMENTS);
+  const [saveState, setSaveState] = useState<SaveState>("idle");
 
   const proj = useMemo(() => project(inputs), [inputs]);
+
+  // Debounced persistence of the engine inputs. Skip the first run so simply
+  // loading the page doesn't trigger a redundant write.
+  const firstRun = useRef(true);
+  useEffect(() => {
+    if (firstRun.current) {
+      firstRun.current = false;
+      return;
+    }
+    setSaveState("saving");
+    const timer = setTimeout(async () => {
+      try {
+        await saveInputsAction(inputs);
+        setSaveState("saved");
+      } catch {
+        setSaveState("idle");
+      }
+    }, 700);
+    return () => clearTimeout(timer);
+  }, [inputs, saveInputsAction]);
 
   const onChange = (key: keyof FinancialInputs, value: number) =>
     setInputs((prev) => ({ ...prev, [key]: value }));
@@ -222,22 +262,38 @@ export default function FreedomApp() {
           </div>
           <p className="mt-1 text-sm text-muted">Three dimensions. One life.</p>
         </div>
-        <nav className="flex gap-1 rounded-full border border-border bg-surface p-1">
-          {DIMENSIONS.map((d) => (
-            <button
-              key={d.id}
-              disabled={!d.ready}
-              className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
-                d.ready
-                  ? "bg-surface-2 text-foreground"
-                  : "text-muted/60 cursor-not-allowed"
-              }`}
-            >
-              {d.label}
-              {!d.ready && <span className="ml-1 text-[10px] uppercase">soon</span>}
-            </button>
-          ))}
-        </nav>
+        <div className="flex flex-col gap-3 sm:items-end">
+          <nav className="flex gap-1 rounded-full border border-border bg-surface p-1">
+            {DIMENSIONS.map((d) => (
+              <button
+                key={d.id}
+                disabled={!d.ready}
+                className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+                  d.ready
+                    ? "bg-surface-2 text-foreground"
+                    : "text-muted/60 cursor-not-allowed"
+                }`}
+              >
+                {d.label}
+                {!d.ready && <span className="ml-1 text-[10px] uppercase">soon</span>}
+              </button>
+            ))}
+          </nav>
+          <div className="flex items-center gap-3 text-xs text-muted">
+            {saveState !== "idle" && (
+              <span>{saveState === "saving" ? "Saving…" : "Saved"}</span>
+            )}
+            {userName && <span className="text-muted/70">{userName}</span>}
+            <form action={signOutAction}>
+              <button
+                type="submit"
+                className="rounded-full border border-border px-3 py-1 transition-colors hover:text-foreground"
+              >
+                Sign out
+              </button>
+            </form>
+          </div>
+        </div>
       </header>
 
       {showFlow ? (

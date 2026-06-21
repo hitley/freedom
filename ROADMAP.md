@@ -23,7 +23,80 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   state all live in client state with no DB table yet; their zod schemas
   (`freedomVisionSchema` / `bucketsStateSchema` / `investmentsStateSchema`) are ready.
   Add a per-instance table for each, read/written server-side with the same ownership
-  checks as `financialProfiles`. This unblocks everything real/shared.
+  checks as `financialProfiles`. This unblocks everything real/shared. **Plan below.**
+
+  ### Persistence plan (decided 2026-06-19)
+
+  **Database: stay on Neon Postgres + Drizzle.** Already chosen, modelled, and coded
+  against (`src/db`, `@auth/drizzle-adapter`). Free tier (0.5 GB, scale-to-zero, DB
+  branching) covers a personal/family app for years. No reason to switch.
+
+  **Encryption: rely on Neon's at-rest encryption (AES-256) + TLS in transit** for
+  now — values stay queryable/aggregatable in SQL. App-level field encryption of
+  monetary figures is deliberately *deferred* (see Security section); revisit as a
+  dedicated pass before sharing data with anyone outside the owner.
+
+  **Storage shape: one JSONB document per domain, keyed by `instanceId`** — not
+  normalised relational tables. Each of `vision` / `buckets` / `investments` is a
+  nested document the app reads and writes *whole*, and each already has a zod schema
+  that is its validation boundary. So: `vision_state` / `buckets_state` /
+  `investments_state` tables, each `{ instanceId (unique FK), data jsonb, updatedAt }`,
+  with the existing zod schema validating on the way in *and* out (parse on read so a
+  bad/stale row fails loudly). `financialProfiles` stays as typed columns (engine
+  benefits; already built). Rationale: minimal schema churn, matches how the UI uses
+  the data, and single-row upserts sidestep the **`neon-http` driver's lack of
+  multi-statement transactions** (`src/db/index.ts`). Normalising into relational
+  tables is a later move *only if* cross-instance SQL queries are ever needed.
+
+  **Access layer: server-side only, ownership-checked.** No data-access code exists yet
+  (`use server` grep is empty). Introduce `src/lib/server/` (or `src/db/queries/`):
+  - `requireUser()` — wraps `auth()`, throws if unauthenticated.
+  - `getOrCreateDefaultInstance(userId)` — **instance bootstrap is missing today**;
+    nothing creates a workspace on first sign-in. Lazily create one default instance
+    per user (owner = user) on first authenticated load.
+  - `requireInstance(instanceId, userId)` — single choke-point that confirms
+    `instance.ownerId === userId` before *every* read/write. Never trust a client-sent
+    instanceId without this.
+  - Per-domain `load<Domain>(instanceId)` / `save<Domain>(instanceId, state)` server
+    actions that re-validate with the domain's zod schema and call `requireInstance`.
+
+  **UI wiring:** turn `FreedomApp`'s ancestor into a server component that loads the
+  four pieces of state for the default instance and passes them as initial props;
+  `FreedomApp` stays a client component but its `onChange` handlers call the save
+  server actions (debounced) instead of only mutating local state. Keep the
+  illustrative starter data only as the seed for a brand-new empty instance.
+
+  **Build order (vertical slice first):**
+  1. ✅ `npx drizzle-kit generate` → first migration for the *existing* schema (auth +
+     `instances` + `financialProfiles`, `instanceId` made unique), **applied to Neon**
+     via `npx drizzle-kit migrate`. `drizzle.config.ts` now `loadEnvFile(".env.local")`
+     so drizzle-kit sees `DATABASE_URL`.
+  2. ✅ DAL in `src/lib/server/`: `requireUser`, `getDefaultInstance` (read-only),
+     `getOrCreateDefaultInstance` (write-path), `requireInstance`.
+  3. ✅ `financialProfiles` wired end-to-end (`loadFinancialProfile` on render,
+     `saveFinancialProfileAction` debounced from `FreedomApp`) + `/signin` page and
+     auth gating, since the app had no way to sign in before.
+  4. Add the three JSONB tables + their generate/migrate.
+  5. Wire `vision`, then `buckets`, then `investments` through the same pattern.
+  6. Update `CLAUDE.md` (flip each domain's "not persisted yet" note as it lands).
+
+  **DB is live; sign-in not yet exercised.** Steps 1–3 are written, type-check/lint/test
+  clean, and the schema is migrated into Neon. Sign-in still needs a Google OAuth client
+  (`AUTH_GOOGLE_ID` / `_SECRET` in `.env.local`) before the round-trip can be verified in
+  the browser.
+
+## Auth & sharing
+
+- **Decided (2026-06-21):** Google-only sign-in; **allowlist** via `AUTH_ALLOWED_EMAILS`
+  (the `signIn` callback rejects non-listed emails before any row is created); intended
+  users are *me + family/partner*.
+- **Workspace sharing (the family bit) — future.** Today authorization is **owner-only**
+  (`instances.ownerId`, checked in `src/lib/server/instance.ts`). To let a partner open
+  the *same* workspace, add an **`instance_members`** table (`instanceId`, `userId`,
+  `role`) and change the DAL's check from "is owner" to "is a member", plus an
+  invite/grant flow. The allowlist already lets each family member *in* (each gets their
+  own instance); this adds genuine shared access on top. Don't build until shared access
+  is actually wanted.
 
 ## Security (must land before any real or shared data)
 

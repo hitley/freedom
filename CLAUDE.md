@@ -25,7 +25,12 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
 - **Auth**: Auth.js v5 (`next-auth`, self-hosted). Google is the only sign-in
   method; identity is stored in **our own** Postgres via `@auth/drizzle-adapter`.
   Database session strategy (revocable). Config in `src/auth.ts`; route handler at
-  `src/app/api/auth/[...nextauth]/route.ts`.
+  `src/app/api/auth/[...nextauth]/route.ts`. Sign-in is **allowlisted** — the
+  `signIn` callback admits only emails in `AUTH_ALLOWED_EMAILS` (comma-separated),
+  rejecting everyone else *before* any user/session row is created (empty list falls
+  open, for dev only). This keeps the app private; add family/partner emails here.
+  Authorization today is **owner-only** (`instances.ownerId`); true multi-member
+  workspace *sharing* is future work (see `ROADMAP.md`).
 - **Database**: Neon Postgres + Drizzle ORM (`src/db/`). Type-safe, parameterised
   queries. Schema in `src/db/schema.ts`; migrations via `drizzle-kit` → `drizzle/`.
 - **Engine** (`src/lib/finance/`): pure, dependency-light, framework-agnostic math
@@ -74,9 +79,23 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   by ticker to override). Investments are deliberately **independent of the projection
   engine** for now (feeding totals into `currentInvested` is a future step).
   `investmentsStateSchema` is the zod boundary (ready for persistence; not stored yet).
+- **Access layer** (`src/lib/server/`): the server-only data-access layer (DAL).
+  `instance.ts` is the authorization choke-point — `requireUser` (cached `auth()`),
+  `getDefaultInstance` (read-only; `null` if none), `getOrCreateDefaultInstance`
+  (write-path only — lazily provisions the workspace on first save, so renders never
+  mutate), and `requireInstance(id)` (ownership check for client-named instances).
+  `financial-profile.ts` is the first domain wired through it: `loadFinancialProfile`
+  / `saveFinancialProfile`, crossing the `financialInputsSchema` zod boundary in *and*
+  out and upserting on the unique `instanceId`. Thin `"use server"` actions in
+  `src/app/actions.ts` delegate here; auth + validation live in the DAL, never the
+  action.
 - **UI flow** (`src/components/`): `FreedomApp` orchestrates the financial
-  dimension — it owns the `vision`, engine `inputs`, `buckets`, and `investments`
-  (client-side state for now, **not yet persisted**) and shows the guided
+  dimension. The engine `inputs` are **persisted per-instance** — seeded from the
+  server (`loadFinancialProfile` in `src/app/page.tsx`) and saved debounced via the
+  `saveInputsAction` prop on change. The `vision`, `buckets`, and `investments` are
+  still client-only (**not yet persisted**). The home page is **auth-gated**
+  (`page.tsx` redirects to `/signin` without a session; `src/app/signin/page.tsx` is
+  the Google sign-in; a sign-out form sits in the header). It shows the guided
   `onboarding/VisionOnboarding` flow first, then `VisionPanel` (editable, re-opens
   the flow) above a **Trajectory | Buckets | Investments** toggle: `FinancialDashboard`
   (controlled `inputs`/`proj`; the captured goal seeds its annual spend),
@@ -102,8 +121,13 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   This is how data is segregated so the app can serve others, not just one user.
 - **Authorization is always checked server-side** — never trust the client with
   another instance's data. Confirm the signed-in user owns/belongs to the instance
-  on every read and write.
-- `financialProfiles` holds the engine inputs for an instance.
+  on every read and write. This is centralised in the **DAL** (`src/lib/server/`,
+  see Architecture) — resolve the instance from the session, never from a
+  client-supplied id, so there's no IDOR surface.
+- `financialProfiles` holds the engine inputs for an instance (one row per instance —
+  `instanceId` is unique). It is **wired end-to-end**: loaded server-side on render
+  and saved via the `saveFinancialProfileAction`. The user's default instance is
+  lazily created on first save.
 - The captured **vision**, the **buckets** state, and the **investments** state are
   **not persisted yet** — they live in client state (seeded with illustrative starter
   data in `FreedomApp`). The next step for each is a per-instance table fed by its zod

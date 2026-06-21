@@ -84,8 +84,10 @@ export const instances = pgTable("instance", {
  */
 export const financialProfiles = pgTable("financial_profile", {
   id: uuid("id").primaryKey().defaultRandom(),
+  // One financial profile per instance — unique so the save path can upsert on it.
   instanceId: uuid("instance_id")
     .notNull()
+    .unique()
     .references(() => instances.id, { onDelete: "cascade" }),
   currentInvested: numeric("current_invested", { mode: "number" }).notNull().default(0),
   monthlyContribution: numeric("monthly_contribution", { mode: "number" }).notNull().default(0),
