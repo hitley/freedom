@@ -7,6 +7,7 @@ import { saveBuckets } from "@/lib/server/buckets";
 import { saveInvestments } from "@/lib/server/investments";
 import { saveSpending } from "@/lib/server/spending";
 import { addInboxItem, setInboxStatus } from "@/lib/server/inbox";
+import { processInboxItem } from "@/lib/server/extract";
 import type { FinancialInputsInput } from "@/lib/finance";
 import type { FreedomVisionInput } from "@/lib/vision";
 import type { BucketsStateInput } from "@/lib/buckets";
@@ -73,4 +74,14 @@ export async function dismissInboxItemAction(id: string): Promise<{ ok: true }> 
   await setInboxStatus(id, "dismissed");
   revalidatePath("/");
   return { ok: true };
+}
+
+/**
+ * Run the Extract stage on a pending CSV item: parse → dedupe → `proposed`. Returns
+ * the updated item (with its drafts on `extracted`) so the client can reflect it.
+ */
+export async function processInboxItemAction(id: string): Promise<InboxItem> {
+  const item = await processInboxItem(id);
+  revalidatePath("/");
+  return item;
 }

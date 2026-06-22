@@ -100,11 +100,15 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   id/provenance excluded so the same real transaction from two statements keys equal) and
   the `dedupe(existing, candidates)` splitter. `spendingStateSchema` is the zod boundary.
   This is the **first piece of the async ingestion inbox / bookkeeper pipeline** (design
-  in `design-notes/001-ingestion-inbox-bookkeeper.md`). The domain is now **persisted and
-  surfaced** (manual entry + the inbox **capture** stage today; async extract/propose land
-  next), via `spending/SpendingPanel` (annualised-spend headline vs the vision's target
+  in `design-notes/001-ingestion-inbox-bookkeeper.md`). The domain is **persisted and
+  surfaced** via `spending/SpendingPanel` (annualised-spend headline vs the vision's target
   spend, a by-category breakdown, and the transaction list) with `spending/TransactionEditor`
-  as the add/edit modal.
+  as the add/edit modal. It also owns the **deterministic CSV parser** (`csv.ts`):
+  `parseStatementCsv(raw, mappingOverride?)` locates columns by fuzzy header matching
+  (single signed `amount`, or separate debit/credit) and tolerantly parses UK date/amount
+  formats into `DraftTransaction`s — pure and unit-tested (`csv.test.ts`); `ColumnMapping`
+  is returned so a per-bank mapping step can override detection later. `proposedTransactions
+  Schema` is the shape the Extract stage stores on an inbox item (deduped drafts + counts).
 - **Inbox domain** (`src/lib/inbox/`): the durable **queue at the head of the bookkeeper
   pipeline** (Capture → Extract → Propose → Reconcile). Unlike the other domains (one jsonb
   document per instance), this is a **real table, one row per dropped artifact**
@@ -114,9 +118,14 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   it's typed as an opaque string from day one), a `source`, and `extracted` candidate facts
   (null until processed). Pure helpers (`isActive`, `needsReview`, `sortByNewest`,
   `countByStatus`) + the `newInboxItemSchema` zod boundary (source allowlist of `csv`/`text`
-  + a ~1MB size cap). **Only the Capture stage is wired today**: drop a statement CSV
-  (upload or paste) or a free-text note and it's stored `pending`; the Extract/Propose
-  stages (deterministic CSV parse → dedupe → review) are next.
+  + a ~1MB size cap). **Capture and Extract are wired**: drop a statement CSV (upload or
+  paste) or a free-text note → `pending`; then **Extract** (`src/lib/server/extract.ts`,
+  `processInboxItem`) parses the CSV via `parseStatementCsv`, assigns ids + `import`
+  provenance, **dedupes** against the spending ledger, and moves the item to `proposed`
+  with the fresh drafts on `extracted`. It's synchronous behind a manual "Process" button
+  for now — the same function will be the body of a Vercel Cron `/api/inbox/process`
+  runner. The **Reconcile** stage (review/approve `proposed` drafts into spending) is next;
+  free-text/PDF Extract awaits the LLM stage.
 - **Access layer** (`src/lib/server/`): the server-only data-access layer (DAL).
   `instance.ts` is the authorization choke-point — `requireUser` (cached `auth()`),
   `getDefaultInstance` (read-only; `null` if none), `getOrCreateDefaultInstance`
@@ -133,8 +142,11 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   exposes `listInbox` / `addInboxItem` / `getInboxItem` / `setInboxStatus` rather than a
   load/save pair, but every read/write still resolves the instance from the session
   (`getInboxItem` re-checks ownership via `requireInstance`, and updates are scoped to the
-  resolved instance in the `WHERE`). Thin `"use server"` actions in `src/app/actions.ts`
-  delegate here; auth + validation live in the DAL, never the action.
+  resolved instance in the `WHERE`). `extract.ts` (`processInboxItem`) orchestrates the
+  Extract stage on top of these — read a `pending` CSV item, parse, dedupe against the
+  loaded spending, write `proposed` drafts back — and is the same function a cron runner
+  will call. Thin `"use server"` actions in `src/app/actions.ts` delegate here; auth +
+  validation live in the DAL, never the action.
 - **UI flow** (`src/components/`): `FreedomApp` orchestrates the financial
   dimension. **All domains are persisted per-instance** — `page.tsx` loads `inputs` /
   `vision` / `buckets` / `investments` / `spending` plus the `inbox` list server-side
@@ -142,7 +154,9 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   `FreedomApp` saves changes through the matching `save*Action` props. The inbox differs:
   it's a live per-row queue, so capture/dismiss go straight through `addInboxItemAction` /
   `dismissInboxItemAction` (which `revalidatePath` the route), updating the local list from
-  the result rather than debounced-saving a document. `inputs`, `buckets`, `investments`,
+  the result rather than debounced-saving a document; a pending CSV item also has a
+  **Process** action (`processInboxItemAction`) that runs Extract and shows the proposed
+  drafts inline. `inputs`, `buckets`, `investments`,
   and `spending` save **debounced** (via the `useDebouncedSave` hook, which skips the
   first run so seeding doesn't write back); the `vision` is saved **explicitly** when the
   capture flow completes. Each `load*` returns `null` for a fresh instance, so the UI
@@ -173,7 +187,10 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   the same list once the ingestion inbox lands. The **Inbox** view (`inbox/InboxPanel`) is
   the head of that pipeline: a capture card (source toggle, CSV upload **or** paste, or a
   free-text note) that queues a `pending` item, above the queue list with per-item status
-  chips and dismiss. Capture is the only stage wired; processing into spending is next.
+  chips, a **Process** button on pending CSV items, and dismiss. Processing a CSV runs the
+  Extract stage and shows an inline "N transactions ready to review" summary (deduped count
+  + spend total) on the now-`proposed` item; the review/approve screen that applies those
+  drafts to the ledger is the next stage.
 
 ## Data model & multi-tenancy
 

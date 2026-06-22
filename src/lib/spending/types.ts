@@ -64,6 +64,13 @@ export interface Transaction {
   source: TransactionSource;
 }
 
+/**
+ * A transaction before it's been given an identity and provenance — what the CSV
+ * parser produces. The Extract stage assigns an `id` and an `import` `source` to turn
+ * each draft into a full {@link Transaction}.
+ */
+export type DraftTransaction = Omit<Transaction, "id" | "source">;
+
 /** The full client-side state: every transaction the user tracks. */
 export interface SpendingState {
   transactions: Transaction[];

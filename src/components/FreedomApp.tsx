@@ -268,6 +268,8 @@ interface FreedomAppProps {
   addInboxItemAction: (input: NewInboxItemInput) => Promise<InboxItem>;
   /** Server action dismissing an inbox item. */
   dismissInboxItemAction: (id: string) => Promise<{ ok: true }>;
+  /** Server action running the Extract stage on a CSV item; returns the updated item. */
+  processInboxItemAction: (id: string) => Promise<InboxItem>;
   /** Server action that signs the user out. */
   signOutAction: () => Promise<void>;
   /** Display name (or email) of the signed-in user. */
@@ -296,6 +298,7 @@ export default function FreedomApp({
   saveSpendingAction,
   addInboxItemAction,
   dismissInboxItemAction,
+  processInboxItemAction,
   signOutAction,
   userName,
   authBypassed = false,
@@ -341,6 +344,11 @@ export default function FreedomApp({
     setInbox((prev) =>
       prev.map((i) => (i.id === id ? { ...i, status: "dismissed" } : i)),
     );
+  };
+
+  const processInboxItem = async (id: string) => {
+    const updated = await processInboxItemAction(id);
+    setInbox((prev) => prev.map((i) => (i.id === id ? updated : i)));
   };
 
   const completeVision = (v: FreedomVision) => {
@@ -473,6 +481,7 @@ export default function FreedomApp({
               items={inbox}
               onAdd={addInboxItem}
               onDismiss={dismissInboxItem}
+              onProcess={processInboxItem}
             />
           )}
         </>

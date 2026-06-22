@@ -11,6 +11,7 @@ import type {
 import { SPENDING_CATEGORIES } from "./types";
 
 export * from "./types";
+export * from "./csv";
 
 /* ----------------------------------------------------------------------------
  * Pure helpers. Given a flat list of transactions, derive what the UI shows and
@@ -196,3 +197,26 @@ export const spendingStateSchema = z.object({
 });
 
 export type SpendingStateInput = z.input<typeof spendingStateSchema>;
+
+/**
+ * The Extract stage's output, stored on an inbox item's `extracted` field once it's
+ * `proposed`: the fresh (deduped) transactions awaiting review, plus the counts that
+ * explain what happened to the rest of the file. Full `Transaction`s — ids and import
+ * provenance already assigned — so the review screen only has to confirm and insert.
+ */
+export const proposedTransactionsSchema = z.object({
+  transactions: z.array(transactionSchema),
+  /** Rows dropped because they already exist in the spending ledger. */
+  duplicateCount: z.number().int().min(0),
+  /** Rows the parser couldn't read (bad date/amount, summary lines). */
+  skipped: z.number().int().min(0),
+  /** Total data rows the parser saw. */
+  totalRows: z.number().int().min(0),
+});
+
+export type ProposedTransactions = {
+  transactions: Transaction[];
+  duplicateCount: number;
+  skipped: number;
+  totalRows: number;
+};

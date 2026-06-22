@@ -9,6 +9,13 @@ import {
   type InboxItem,
   type NewInboxItemInput,
 } from "@/lib/inbox";
+import { proposedTransactionsSchema, type ProposedTransactions } from "@/lib/spending";
+
+const gbp0 = new Intl.NumberFormat("en-GB", {
+  style: "currency",
+  currency: "GBP",
+  maximumFractionDigits: 0,
+});
 
 /** The sources the capture stage can actually accept (matches the zod boundary). */
 type CapturableSource = NewInboxItemInput["source"];
@@ -44,12 +51,16 @@ export default function InboxPanel({
   items,
   onAdd,
   onDismiss,
+  onProcess,
 }: {
   items: InboxItem[];
   onAdd: (input: NewInboxItemInput) => Promise<void>;
   onDismiss: (id: string) => Promise<void>;
+  onProcess: (id: string) => Promise<void>;
 }) {
   const [source, setSource] = useState<CapturableSource>("csv");
+  // Id of the item currently being processed, for a per-row busy state.
+  const [processingId, setProcessingId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [raw, setRaw] = useState("");
   const [busy, setBusy] = useState(false);
@@ -80,6 +91,15 @@ export default function InboxPanel({
       setError("Couldn't add that — check it isn't empty or too large.");
     } finally {
       setBusy(false);
+    }
+  };
+
+  const process = async (id: string) => {
+    setProcessingId(id);
+    try {
+      await onProcess(id);
+    } finally {
+      setProcessingId(null);
     }
   };
 
@@ -191,36 +211,79 @@ export default function InboxPanel({
           {items.map((item, i) => {
             const meta = sourceMeta(item.source);
             const dismissed = item.status === "dismissed";
+            const proposed = readProposed(item);
+            const canProcess =
+              item.source === "csv" &&
+              (item.status === "pending" || item.status === "failed");
+            const isProcessing = processingId === item.id;
             return (
               <div
                 key={item.id}
-                className={`flex items-center gap-3 px-4 py-3 ${
-                  i > 0 ? "border-t border-border" : ""
-                } ${dismissed ? "opacity-50" : ""}`}
+                className={`px-4 py-3 ${i > 0 ? "border-t border-border" : ""} ${
+                  dismissed ? "opacity-50" : ""
+                }`}
               >
-                <span className="text-lg" aria-hidden>
-                  {meta?.glyph}
-                </span>
-                <div className="min-w-0 flex-1">
-                  <div
-                    className={`truncate text-sm text-foreground ${dismissed ? "line-through" : ""}`}
-                  >
-                    {item.label}
+                <div className="flex items-center gap-3">
+                  <span className="text-lg" aria-hidden>
+                    {meta?.glyph}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className={`truncate text-sm text-foreground ${dismissed ? "line-through" : ""}`}
+                    >
+                      {item.label}
+                    </div>
+                    <div className="mt-0.5 text-xs text-muted">
+                      {meta?.label} · {dateTime.format(item.createdAt)}
+                    </div>
                   </div>
-                  <div className="mt-0.5 text-xs text-muted">
-                    {meta?.label} · {dateTime.format(item.createdAt)}
-                  </div>
+                  <StatusChip status={item.status} />
+                  {canProcess && (
+                    <button
+                      type="button"
+                      onClick={() => process(item.id)}
+                      disabled={isProcessing}
+                      className="shrink-0 rounded-full bg-emerald px-3 py-1 text-xs font-semibold text-background transition-opacity hover:opacity-90 disabled:opacity-50"
+                    >
+                      {isProcessing ? "Processing…" : item.status === "failed" ? "Retry" : "Process"}
+                    </button>
+                  )}
+                  {isActive(item) && (
+                    <button
+                      type="button"
+                      onClick={() => onDismiss(item.id)}
+                      aria-label="Dismiss"
+                      className="shrink-0 rounded-full px-2 py-1 text-xs text-muted transition-colors hover:text-gold"
+                    >
+                      Dismiss
+                    </button>
+                  )}
                 </div>
-                <StatusChip status={item.status} />
-                {isActive(item) && (
-                  <button
-                    type="button"
-                    onClick={() => onDismiss(item.id)}
-                    aria-label="Dismiss"
-                    className="shrink-0 rounded-full px-2 py-1 text-xs text-muted transition-colors hover:text-gold"
-                  >
-                    Dismiss
-                  </button>
+
+                {/* proposed result — what extraction produced, awaiting review */}
+                {proposed && (
+                  <div className="mt-2 rounded-lg border border-emerald/30 bg-emerald/5 px-3 py-2 text-xs">
+                    <span className="font-semibold text-emerald">
+                      {proposed.transactions.length} transaction
+                      {proposed.transactions.length === 1 ? "" : "s"} ready to review
+                    </span>
+                    <span className="text-muted">
+                      {" "}
+                      ({gbp0.format(spendTotal(proposed))} spend
+                      {proposed.duplicateCount > 0 && `, ${proposed.duplicateCount} duplicate${proposed.duplicateCount === 1 ? "" : "s"} skipped`}
+                      {proposed.skipped > 0 && `, ${proposed.skipped} row${proposed.skipped === 1 ? "" : "s"} unread`})
+                    </span>
+                    <span className="mt-0.5 block text-muted/70">
+                      The review &amp; approve screen lands in the next stage.
+                    </span>
+                  </div>
+                )}
+
+                {/* failure detail */}
+                {item.status === "failed" && item.error && (
+                  <div className="mt-2 rounded-lg border border-gold/30 bg-gold/5 px-3 py-2 text-xs text-gold">
+                    {item.error}
+                  </div>
                 )}
               </div>
             );
@@ -229,6 +292,20 @@ export default function InboxPanel({
       )}
     </section>
   );
+}
+
+/** Safely read an item's `extracted` drafts (a proposed item carries them). */
+function readProposed(item: InboxItem): ProposedTransactions | null {
+  if (item.status !== "proposed" || item.extracted == null) return null;
+  const result = proposedTransactionsSchema.safeParse(item.extracted);
+  return result.success ? (result.data as ProposedTransactions) : null;
+}
+
+/** Total spend (out) across a proposal, for the summary line. */
+function spendTotal(p: ProposedTransactions): number {
+  return p.transactions
+    .filter((t) => t.direction === "out")
+    .reduce((sum, t) => sum + t.amount, 0);
 }
 
 /** A coloured chip for an item's pipeline status. */
