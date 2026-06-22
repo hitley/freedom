@@ -79,6 +79,24 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   by ticker to override). Investments are deliberately **independent of the projection
   engine** for now (feeding totals into `currentInvested` is a future step).
   `investmentsStateSchema` is the zod boundary (ready for persistence; not stored yet).
+- **Spending domain** (`src/lib/spending/`): pure data + helpers for the user's
+  *observed* outgoings and income — the counterpart to buckets' *intended* `Cashflow`s.
+  Each `Transaction` is a single statement line or manual entry: a positive `amount` plus
+  a `direction` (`in`/`out`), a `category`, and a `source` (`manual` or an `import`
+  carrying the originating `inboxItemId` for provenance). "Spend" deliberately excludes
+  own-account `transfer`s (and income), so totals reflect real outgoings: `isSpend` /
+  `isIncome` gate the rollups, `summarise` gives totals + `spendByCategory` +
+  `spendByMonth`, and **`spendWindow` / `annualisedSpend`** scale the observed window to a
+  full year — the data-backed figure intended to feed the vision's target spend. Imports
+  dedupe at the Propose stage via `dedupeKey` (`date|signedAmount|normalisedDescription`,
+  id/provenance excluded so the same real transaction from two statements keys equal) and
+  the `dedupe(existing, candidates)` splitter. `spendingStateSchema` is the zod boundary.
+  This is the **first piece of the async ingestion inbox / bookkeeper pipeline** (design
+  in `design-notes/001-ingestion-inbox-bookkeeper.md`). The domain is now **persisted and
+  surfaced** (manual entry today; the `inbox` table + capture/processing land next), via
+  `spending/SpendingPanel` (annualised-spend headline vs the vision's target spend, a
+  by-category breakdown, and the transaction list) with `spending/TransactionEditor` as
+  the add/edit modal.
 - **Access layer** (`src/lib/server/`): the server-only data-access layer (DAL).
   `instance.ts` is the authorization choke-point — `requireUser` (cached `auth()`),
   `getDefaultInstance` (read-only; `null` if none), `getOrCreateDefaultInstance`
@@ -86,28 +104,28 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   mutate), and `requireInstance(id)` (ownership check for client-named instances).
   `financial-profile.ts` was the first domain wired through it: `loadFinancialProfile`
   / `saveFinancialProfile`, crossing the `financialInputsSchema` zod boundary in *and*
-  out and upserting on the unique `instanceId`. The `vision`, `buckets`, and
-  `investments` domains follow the same shape (`vision.ts` / `buckets.ts` /
-  `investments.ts`) but store a **single jsonb document** per instance (validated
-  through each domain's zod schema on read/write) instead of typed columns — the data
-  is a nested document the app reads/writes whole. Thin `"use server"` actions in
-  `src/app/actions.ts` delegate here; auth + validation live in the DAL, never the
-  action.
+  out and upserting on the unique `instanceId`. The `vision`, `buckets`,
+  `investments`, and `spending` domains follow the same shape (`vision.ts` /
+  `buckets.ts` / `investments.ts` / `spending.ts`) but store a **single jsonb document**
+  per instance (validated through each domain's zod schema on read/write) instead of
+  typed columns — the data is a nested document the app reads/writes whole. Thin
+  `"use server"` actions in `src/app/actions.ts` delegate here; auth + validation live in
+  the DAL, never the action.
 - **UI flow** (`src/components/`): `FreedomApp` orchestrates the financial
-  dimension. **All four domains are persisted per-instance** — `page.tsx` loads
-  `inputs` / `vision` / `buckets` / `investments` server-side (`Promise.all` of the
-  four `load*` DAL fns) and passes them as initial props; `FreedomApp` saves changes
-  through the matching `save*Action` props. `inputs`, `buckets`, and `investments` save
-  **debounced** (via the `useDebouncedSave` hook, which skips the first run so seeding
-  doesn't write back); the `vision` is saved **explicitly** when the capture flow
-  completes. Each `load*` returns `null` for a fresh instance, so the UI falls back to
-  `DEFAULT_INPUTS` / onboarding / the illustrative seeds. The home page is **auth-gated**
-  (`page.tsx` redirects to `/signin` without a session; `src/app/signin/page.tsx` is
-  the Google sign-in; a sign-out form sits in the header). It shows the guided
-  `onboarding/VisionOnboarding` flow first, then `VisionPanel` (editable, re-opens
-  the flow) above a **Trajectory | Buckets | Investments** toggle: `FinancialDashboard`
-  (controlled `inputs`/`proj`; the captured goal seeds its annual spend),
-  `buckets/BucketsPanel`, and `investments/InvestmentsPanel` (portfolio value +
+  dimension. **All five domains are persisted per-instance** — `page.tsx` loads
+  `inputs` / `vision` / `buckets` / `investments` / `spending` server-side (`Promise.all`
+  of the five `load*` DAL fns) and passes them as initial props; `FreedomApp` saves
+  changes through the matching `save*Action` props. `inputs`, `buckets`, `investments`,
+  and `spending` save **debounced** (via the `useDebouncedSave` hook, which skips the
+  first run so seeding doesn't write back); the `vision` is saved **explicitly** when the
+  capture flow completes. Each `load*` returns `null` for a fresh instance, so the UI
+  falls back to `DEFAULT_INPUTS` / onboarding / the illustrative seeds. The home page is
+  **auth-gated** (`page.tsx` redirects to `/signin` without a session;
+  `src/app/signin/page.tsx` is the Google sign-in; a sign-out form sits in the header).
+  It shows the guided `onboarding/VisionOnboarding` flow first, then `VisionPanel`
+  (editable, re-opens the flow) above a **Trajectory | Buckets | Investments | Spending**
+  toggle: `FinancialDashboard` (controlled `inputs`/`proj`; the captured goal seeds its
+  annual spend), `buckets/BucketsPanel`, `investments/InvestmentsPanel` (portfolio value +
   by-kind breakdown + 1-year look-ahead, with `investments/HoldingEditor` as the
   add/edit modal — which also captures the per-holding `history`). Clicking a holding
   tile **maximises** it into `investments/HoldingDetail`: one timeline showing the
@@ -120,7 +138,12 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   hover scrubber), an accounts strip with an "as of" selector that projects each
   account forward, and bucket cards; `BucketEditor` (incl. per-bucket scheduled
   payments) / `AccountsEditor` are modals. Buckets are independent of the projection
-  engine for now — feeding bucket totals into the engine is a future step.
+  engine for now — feeding bucket totals into the engine is a future step. The
+  **Spending** view (`spending/SpendingPanel`) leads with the **annualised-spend**
+  headline compared against the vision's target spend, a by-category breakdown bar, and
+  the transaction list (newest-first; click a row to edit); `spending/TransactionEditor`
+  is the add/edit modal. Manual entry today — imported statement rows will reconcile into
+  the same list once the ingestion inbox lands.
 
 ## Data model & multi-tenancy
 
@@ -133,11 +156,12 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   see Architecture) — resolve the instance from the session, never from a
   client-supplied id, so there's no IDOR surface.
 - `financialProfiles` holds the engine inputs for an instance as typed columns; the
-  captured **vision**, **buckets**, and **investments** state are each a per-instance
-  **jsonb document** (`vision_state` / `buckets_state` / `investments_state`). All four
-  are **wired end-to-end** (one row per instance — `instanceId` is unique — loaded
-  server-side on render and saved via their `save*Action`s, each validated through its
-  zod schema). The user's default instance is lazily created on first save.
+  captured **vision**, **buckets**, **investments**, and **spending** state are each a
+  per-instance **jsonb document** (`vision_state` / `buckets_state` / `investments_state`
+  / `spending_state`). All five are **wired end-to-end** (one row per instance —
+  `instanceId` is unique — loaded server-side on render and saved via their
+  `save*Action`s, each validated through its zod schema). The user's default instance is
+  lazily created on first save.
 
 ## Security (utmost priority)
 

@@ -15,6 +15,13 @@
       "when": 1782039698899,
       "tag": "0001_pretty_black_tom",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782119915504,
+      "tag": "0002_groovy_maggott",
+      "breakpoints": true
     }
   ]
 }

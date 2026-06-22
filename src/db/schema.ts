@@ -138,3 +138,13 @@ export const investmentsStates = pgTable("investments_state", {
   data: jsonb("data").notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
+
+export const spendingStates = pgTable("spending_state", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  instanceId: uuid("instance_id")
+    .notNull()
+    .unique()
+    .references(() => instances.id, { onDelete: "cascade" }),
+  data: jsonb("data").notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
+});

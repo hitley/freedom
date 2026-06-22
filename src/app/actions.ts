@@ -4,10 +4,12 @@ import { saveFinancialProfile } from "@/lib/server/financial-profile";
 import { saveVision } from "@/lib/server/vision";
 import { saveBuckets } from "@/lib/server/buckets";
 import { saveInvestments } from "@/lib/server/investments";
+import { saveSpending } from "@/lib/server/spending";
 import type { FinancialInputsInput } from "@/lib/finance";
 import type { FreedomVisionInput } from "@/lib/vision";
 import type { BucketsStateInput } from "@/lib/buckets";
 import type { InvestmentsStateInput } from "@/lib/investments";
+import type { SpendingStateInput } from "@/lib/spending";
 
 /**
  * Thin `"use server"` boundary over the data access layer. Auth, authorization,
@@ -40,5 +42,12 @@ export async function saveInvestmentsAction(
   investments: InvestmentsStateInput,
 ): Promise<{ ok: true }> {
   await saveInvestments(investments);
+  return { ok: true };
+}
+
+export async function saveSpendingAction(
+  spending: SpendingStateInput,
+): Promise<{ ok: true }> {
+  await saveSpending(spending);
   return { ok: true };
 }

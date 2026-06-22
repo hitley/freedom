@@ -5,11 +5,13 @@ import { loadFinancialProfile } from "@/lib/server/financial-profile";
 import { loadVision } from "@/lib/server/vision";
 import { loadBuckets } from "@/lib/server/buckets";
 import { loadInvestments } from "@/lib/server/investments";
+import { loadSpending } from "@/lib/server/spending";
 import {
   saveFinancialProfileAction,
   saveVisionAction,
   saveBucketsAction,
   saveInvestmentsAction,
+  saveSpendingAction,
 } from "./actions";
 
 export default async function Home() {
@@ -17,13 +19,19 @@ export default async function Home() {
   if (!session?.user) redirect("/signin");
 
   // Server-side load of each persisted domain (null → app uses its defaults/seed).
-  const [initialInputs, initialVision, initialBuckets, initialInvestments] =
-    await Promise.all([
-      loadFinancialProfile(),
-      loadVision(),
-      loadBuckets(),
-      loadInvestments(),
-    ]);
+  const [
+    initialInputs,
+    initialVision,
+    initialBuckets,
+    initialInvestments,
+    initialSpending,
+  ] = await Promise.all([
+    loadFinancialProfile(),
+    loadVision(),
+    loadBuckets(),
+    loadInvestments(),
+    loadSpending(),
+  ]);
 
   async function signOutAction() {
     "use server";
@@ -37,10 +45,12 @@ export default async function Home() {
         initialVision={initialVision}
         initialBuckets={initialBuckets}
         initialInvestments={initialInvestments}
+        initialSpending={initialSpending}
         saveInputsAction={saveFinancialProfileAction}
         saveVisionAction={saveVisionAction}
         saveBucketsAction={saveBucketsAction}
         saveInvestmentsAction={saveInvestmentsAction}
+        saveSpendingAction={saveSpendingAction}
         signOutAction={signOutAction}
         userName={session.user.name ?? session.user.email ?? null}
       />

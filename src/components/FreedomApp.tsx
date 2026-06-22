@@ -5,11 +5,13 @@ import { project, type FinancialInputs } from "@/lib/finance";
 import { fireStyleMeta, type FreedomVision } from "@/lib/vision";
 import type { BucketsState } from "@/lib/buckets";
 import type { InvestmentsState } from "@/lib/investments";
+import type { SpendingState } from "@/lib/spending";
 import VisionOnboarding from "./onboarding/VisionOnboarding";
 import VisionPanel from "./VisionPanel";
 import FinancialDashboard from "./FinancialDashboard";
 import BucketsPanel from "./buckets/BucketsPanel";
 import InvestmentsPanel from "./investments/InvestmentsPanel";
+import SpendingPanel from "./spending/SpendingPanel";
 
 /**
  * Reality + assumptions a fresh user starts from. The *goal* side (annual spend)
@@ -177,7 +179,29 @@ const SEED_INVESTMENTS: InvestmentsState = {
   ],
 };
 
-type FinancialView = "trajectory" | "buckets" | "investments";
+/**
+ * Example transactions that tell the spending story: a couple of months of real-
+ * looking outgoings across categories, plus salary in, so the panel has something
+ * to summarise and annualise. Stable ids so SSR and client render match. Like the
+ * other seeds, illustrative starter data — replaced the moment real data is saved.
+ */
+const SEED_SPENDING: SpendingState = {
+  transactions: [
+    { id: "sp-salary-may", date: "2026-05-28", description: "Salary", amount: 3_200, direction: "in", category: "income", source: { kind: "manual" } },
+    { id: "sp-rent-may", date: "2026-05-01", description: "Rent", amount: 1_350, direction: "out", category: "housing", source: { kind: "manual" } },
+    { id: "sp-energy-may", date: "2026-05-15", description: "Octopus Energy", amount: 128, direction: "out", category: "utilities", source: { kind: "manual" } },
+    { id: "sp-groceries-may", date: "2026-05-20", description: "Tesco", amount: 96.4, direction: "out", category: "groceries", source: { kind: "manual" } },
+    { id: "sp-dining-may", date: "2026-05-24", description: "Dishoom", amount: 72, direction: "out", category: "dining", source: { kind: "manual" } },
+    { id: "sp-salary-jun", date: "2026-06-28", description: "Salary", amount: 3_200, direction: "in", category: "income", source: { kind: "manual" } },
+    { id: "sp-rent-jun", date: "2026-06-01", description: "Rent", amount: 1_350, direction: "out", category: "housing", source: { kind: "manual" } },
+    { id: "sp-groceries-jun", date: "2026-06-08", description: "Sainsbury's", amount: 84.15, direction: "out", category: "groceries", source: { kind: "manual" } },
+    { id: "sp-transport-jun", date: "2026-06-10", description: "Trainline", amount: 47.8, direction: "out", category: "transport", source: { kind: "manual" } },
+    { id: "sp-subs-jun", date: "2026-06-12", description: "Netflix", amount: 12.99, direction: "out", category: "subscriptions", source: { kind: "manual" } },
+    { id: "sp-shopping-jun", date: "2026-06-18", description: "Uniqlo", amount: 64, direction: "out", category: "shopping", source: { kind: "manual" } },
+  ],
+};
+
+type FinancialView = "trajectory" | "buckets" | "investments" | "spending";
 
 type SaveState = "idle" | "saving" | "saved";
 
@@ -219,6 +243,8 @@ interface FreedomAppProps {
   initialBuckets: BucketsState | null;
   /** Persisted investments state, or null to use the illustrative seed. */
   initialInvestments: InvestmentsState | null;
+  /** Persisted spending state, or null to use the illustrative seed. */
+  initialSpending: SpendingState | null;
   /** Server action persisting the engine inputs (auth/validation server-side). */
   saveInputsAction: (inputs: FinancialInputs) => Promise<{ ok: true }>;
   /** Server action persisting the captured vision. */
@@ -227,6 +253,8 @@ interface FreedomAppProps {
   saveBucketsAction: (buckets: BucketsState) => Promise<{ ok: true }>;
   /** Server action persisting the investments state. */
   saveInvestmentsAction: (investments: InvestmentsState) => Promise<{ ok: true }>;
+  /** Server action persisting the spending state. */
+  saveSpendingAction: (spending: SpendingState) => Promise<{ ok: true }>;
   /** Server action that signs the user out. */
   signOutAction: () => Promise<void>;
   /** Display name (or email) of the signed-in user. */
@@ -244,10 +272,12 @@ export default function FreedomApp({
   initialVision,
   initialBuckets,
   initialInvestments,
+  initialSpending,
   saveInputsAction,
   saveVisionAction,
   saveBucketsAction,
   saveInvestmentsAction,
+  saveSpendingAction,
   signOutAction,
   userName,
 }: FreedomAppProps) {
@@ -259,6 +289,9 @@ export default function FreedomApp({
   const [investments, setInvestments] = useState<InvestmentsState>(
     initialInvestments ?? SEED_INVESTMENTS,
   );
+  const [spending, setSpending] = useState<SpendingState>(
+    initialSpending ?? SEED_SPENDING,
+  );
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
   const proj = useMemo(() => project(inputs), [inputs]);
@@ -269,6 +302,7 @@ export default function FreedomApp({
   useDebouncedSave(inputs, saveInputsAction, setSaveState);
   useDebouncedSave(buckets, saveBucketsAction, setSaveState);
   useDebouncedSave(investments, saveInvestmentsAction, setSaveState);
+  useDebouncedSave(spending, saveSpendingAction, setSaveState);
 
   const onChange = (key: keyof FinancialInputs, value: number) =>
     setInputs((prev) => ({ ...prev, [key]: value }));
@@ -358,6 +392,7 @@ export default function FreedomApp({
                 { id: "trajectory", label: "Trajectory" },
                 { id: "buckets", label: "Buckets" },
                 { id: "investments", label: "Investments" },
+                { id: "spending", label: "Spending" },
               ] as const
             ).map((v) => (
               <button
@@ -379,8 +414,14 @@ export default function FreedomApp({
             <FinancialDashboard inputs={inputs} proj={proj} onChange={onChange} />
           ) : view === "buckets" ? (
             <BucketsPanel state={buckets} onChange={setBuckets} />
-          ) : (
+          ) : view === "investments" ? (
             <InvestmentsPanel state={investments} onChange={setInvestments} />
+          ) : (
+            <SpendingPanel
+              state={spending}
+              onChange={setSpending}
+              targetAnnualSpend={inputs.annualSpend}
+            />
           )}
         </>
       )}
