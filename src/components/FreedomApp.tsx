@@ -259,6 +259,8 @@ interface FreedomAppProps {
   signOutAction: () => Promise<void>;
   /** Display name (or email) of the signed-in user. */
   userName: string | null;
+  /** True when the local-dev auth bypass is active (no real sign-in). */
+  authBypassed?: boolean;
 }
 
 /**
@@ -280,6 +282,7 @@ export default function FreedomApp({
   saveSpendingAction,
   signOutAction,
   userName,
+  authBypassed = false,
 }: FreedomAppProps) {
   const [vision, setVision] = useState<FreedomVision | null>(initialVision);
   const [editing, setEditing] = useState(false);
@@ -360,14 +363,23 @@ export default function FreedomApp({
               <span>{saveState === "saving" ? "Saving…" : "Saved"}</span>
             )}
             {userName && <span className="text-muted/70">{userName}</span>}
-            <form action={signOutAction}>
-              <button
-                type="submit"
-                className="rounded-full border border-border px-3 py-1 transition-colors hover:text-foreground"
+            {authBypassed ? (
+              <span
+                title="AUTH_DEV_BYPASS is on — Google sign-in is skipped for local development"
+                className="rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-gold"
               >
-                Sign out
-              </button>
-            </form>
+                Auth off · local
+              </span>
+            ) : (
+              <form action={signOutAction}>
+                <button
+                  type="submit"
+                  className="rounded-full border border-border px-3 py-1 transition-colors hover:text-foreground"
+                >
+                  Sign out
+                </button>
+              </form>
+            )}
           </div>
         </div>
       </header>

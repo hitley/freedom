@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { auth } from "@/auth";
 import { db } from "@/db";
 import { instances } from "@/db/schema";
+import { getOrCreateDevUser, isAuthBypassed } from "./dev-auth";
 
 /**
  * Server-side access layer for instances (workspaces). Every read/write of user
@@ -20,6 +21,10 @@ export type CurrentUser = { id: string; name?: string | null; email?: string | n
  * single request so callers can ask freely.
  */
 export const requireUser = cache(async (): Promise<CurrentUser> => {
+  // Local-dev bypass (never in production — see `isAuthBypassed`): run as a fixed
+  // local user so the whole DAL works without a Google sign-in.
+  if (isAuthBypassed()) return getOrCreateDevUser();
+
   const session = await auth();
   const user = session?.user;
   if (!user?.id) throw new Error("Unauthorized");

@@ -31,6 +31,14 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   open, for dev only). This keeps the app private; add family/partner emails here.
   Authorization today is **owner-only** (`instances.ownerId`); true multi-member
   workspace *sharing* is future work (see `ROADMAP.md`).
+  - **Local-dev auth bypass** (`src/lib/server/dev-auth.ts`): set `AUTH_DEV_BYPASS=true`
+    in `.env.local` to skip Google sign-in and run as a fixed local user (`Local Dev`,
+    provisioned in the DB so instances FK correctly). Real auth is **on by default in
+    every environment**; the bypass is opt-in *and* hard-gated to non-production
+    (`NODE_ENV === "production"` always refuses it, flag or no flag) — it can never
+    disable auth on a deployed instance. `requireUser` short-circuits to the dev user,
+    `page.tsx` / `signin` skip the gate, and the header shows an "Auth off · local"
+    badge in place of sign-out.
 - **Database**: Neon Postgres + Drizzle ORM (`src/db/`). Type-safe, parameterised
   queries. Schema in `src/db/schema.ts`; migrations via `drizzle-kit` → `drizzle/`.
 - **Engine** (`src/lib/finance/`): pure, dependency-light, framework-agnostic math

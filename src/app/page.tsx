@@ -6,6 +6,7 @@ import { loadVision } from "@/lib/server/vision";
 import { loadBuckets } from "@/lib/server/buckets";
 import { loadInvestments } from "@/lib/server/investments";
 import { loadSpending } from "@/lib/server/spending";
+import { DEV_USER_NAME, isAuthBypassed } from "@/lib/server/dev-auth";
 import {
   saveFinancialProfileAction,
   saveVisionAction,
@@ -15,8 +16,9 @@ import {
 } from "./actions";
 
 export default async function Home() {
-  const session = await auth();
-  if (!session?.user) redirect("/signin");
+  const bypass = isAuthBypassed();
+  const session = bypass ? null : await auth();
+  if (!bypass && !session?.user) redirect("/signin");
 
   // Server-side load of each persisted domain (null → app uses its defaults/seed).
   const [
@@ -52,7 +54,12 @@ export default async function Home() {
         saveInvestmentsAction={saveInvestmentsAction}
         saveSpendingAction={saveSpendingAction}
         signOutAction={signOutAction}
-        userName={session.user.name ?? session.user.email ?? null}
+        authBypassed={bypass}
+        userName={
+          bypass
+            ? DEV_USER_NAME
+            : (session?.user?.name ?? session?.user?.email ?? null)
+        }
       />
     </main>
   );

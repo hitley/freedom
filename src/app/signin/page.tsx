@@ -1,11 +1,14 @@
 import { redirect } from "next/navigation";
 import { auth, signIn } from "@/auth";
+import { isAuthBypassed } from "@/lib/server/dev-auth";
 
 /**
  * Sign-in gate. Google is the only method; identity is stored in our own DB via
- * the Drizzle adapter. If already signed in, bounce straight to the app.
+ * the Drizzle adapter. If already signed in — or if the local-dev auth bypass is
+ * on — bounce straight to the app.
  */
 export default async function SignInPage() {
+  if (isAuthBypassed()) redirect("/");
   const session = await auth();
   if (session?.user) redirect("/");
 
