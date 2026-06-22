@@ -6,6 +6,7 @@ import { loadVision } from "@/lib/server/vision";
 import { loadBuckets } from "@/lib/server/buckets";
 import { loadInvestments } from "@/lib/server/investments";
 import { loadSpending } from "@/lib/server/spending";
+import { listInbox } from "@/lib/server/inbox";
 import { DEV_USER_NAME, isAuthBypassed } from "@/lib/server/dev-auth";
 import {
   saveFinancialProfileAction,
@@ -13,6 +14,8 @@ import {
   saveBucketsAction,
   saveInvestmentsAction,
   saveSpendingAction,
+  addInboxItemAction,
+  dismissInboxItemAction,
 } from "./actions";
 
 export default async function Home() {
@@ -27,12 +30,14 @@ export default async function Home() {
     initialBuckets,
     initialInvestments,
     initialSpending,
+    initialInbox,
   ] = await Promise.all([
     loadFinancialProfile(),
     loadVision(),
     loadBuckets(),
     loadInvestments(),
     loadSpending(),
+    listInbox(),
   ]);
 
   async function signOutAction() {
@@ -48,11 +53,14 @@ export default async function Home() {
         initialBuckets={initialBuckets}
         initialInvestments={initialInvestments}
         initialSpending={initialSpending}
+        initialInbox={initialInbox}
         saveInputsAction={saveFinancialProfileAction}
         saveVisionAction={saveVisionAction}
         saveBucketsAction={saveBucketsAction}
         saveInvestmentsAction={saveInvestmentsAction}
         saveSpendingAction={saveSpendingAction}
+        addInboxItemAction={addInboxItemAction}
+        dismissInboxItemAction={dismissInboxItemAction}
         signOutAction={signOutAction}
         authBypassed={bypass}
         userName={

@@ -101,10 +101,22 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   the `dedupe(existing, candidates)` splitter. `spendingStateSchema` is the zod boundary.
   This is the **first piece of the async ingestion inbox / bookkeeper pipeline** (design
   in `design-notes/001-ingestion-inbox-bookkeeper.md`). The domain is now **persisted and
-  surfaced** (manual entry today; the `inbox` table + capture/processing land next), via
-  `spending/SpendingPanel` (annualised-spend headline vs the vision's target spend, a
-  by-category breakdown, and the transaction list) with `spending/TransactionEditor` as
-  the add/edit modal.
+  surfaced** (manual entry + the inbox **capture** stage today; async extract/propose land
+  next), via `spending/SpendingPanel` (annualised-spend headline vs the vision's target
+  spend, a by-category breakdown, and the transaction list) with `spending/TransactionEditor`
+  as the add/edit modal.
+- **Inbox domain** (`src/lib/inbox/`): the durable **queue at the head of the bookkeeper
+  pipeline** (Capture → Extract → Propose → Reconcile). Unlike the other domains (one jsonb
+  document per instance), this is a **real table, one row per dropped artifact**
+  (`inbox_item`), each with an independent `status` lifecycle (`pending` → `extracting` →
+  `proposed` → `applied`, or `failed`/`dismissed`) processed asynchronously. An `InboxItem`
+  holds the artifact `raw` (CSV/text inline now; a blob reference for PDFs/images later — so
+  it's typed as an opaque string from day one), a `source`, and `extracted` candidate facts
+  (null until processed). Pure helpers (`isActive`, `needsReview`, `sortByNewest`,
+  `countByStatus`) + the `newInboxItemSchema` zod boundary (source allowlist of `csv`/`text`
+  + a ~1MB size cap). **Only the Capture stage is wired today**: drop a statement CSV
+  (upload or paste) or a free-text note and it's stored `pending`; the Extract/Propose
+  stages (deterministic CSV parse → dedupe → review) are next.
 - **Access layer** (`src/lib/server/`): the server-only data-access layer (DAL).
   `instance.ts` is the authorization choke-point — `requireUser` (cached `auth()`),
   `getDefaultInstance` (read-only; `null` if none), `getOrCreateDefaultInstance`
@@ -116,14 +128,21 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   `investments`, and `spending` domains follow the same shape (`vision.ts` /
   `buckets.ts` / `investments.ts` / `spending.ts`) but store a **single jsonb document**
   per instance (validated through each domain's zod schema on read/write) instead of
-  typed columns — the data is a nested document the app reads/writes whole. Thin
-  `"use server"` actions in `src/app/actions.ts` delegate here; auth + validation live in
-  the DAL, never the action.
+  typed columns — the data is a nested document the app reads/writes whole. `inbox.ts` is
+  the exception in **shape** but not in discipline: it's a **multi-row** table, so it
+  exposes `listInbox` / `addInboxItem` / `getInboxItem` / `setInboxStatus` rather than a
+  load/save pair, but every read/write still resolves the instance from the session
+  (`getInboxItem` re-checks ownership via `requireInstance`, and updates are scoped to the
+  resolved instance in the `WHERE`). Thin `"use server"` actions in `src/app/actions.ts`
+  delegate here; auth + validation live in the DAL, never the action.
 - **UI flow** (`src/components/`): `FreedomApp` orchestrates the financial
-  dimension. **All five domains are persisted per-instance** — `page.tsx` loads
-  `inputs` / `vision` / `buckets` / `investments` / `spending` server-side (`Promise.all`
-  of the five `load*` DAL fns) and passes them as initial props; `FreedomApp` saves
-  changes through the matching `save*Action` props. `inputs`, `buckets`, `investments`,
+  dimension. **All domains are persisted per-instance** — `page.tsx` loads `inputs` /
+  `vision` / `buckets` / `investments` / `spending` plus the `inbox` list server-side
+  (`Promise.all` of the `load*`/`listInbox` DAL fns) and passes them as initial props;
+  `FreedomApp` saves changes through the matching `save*Action` props. The inbox differs:
+  it's a live per-row queue, so capture/dismiss go straight through `addInboxItemAction` /
+  `dismissInboxItemAction` (which `revalidatePath` the route), updating the local list from
+  the result rather than debounced-saving a document. `inputs`, `buckets`, `investments`,
   and `spending` save **debounced** (via the `useDebouncedSave` hook, which skips the
   first run so seeding doesn't write back); the `vision` is saved **explicitly** when the
   capture flow completes. Each `load*` returns `null` for a fresh instance, so the UI
@@ -131,8 +150,8 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   **auth-gated** (`page.tsx` redirects to `/signin` without a session;
   `src/app/signin/page.tsx` is the Google sign-in; a sign-out form sits in the header).
   It shows the guided `onboarding/VisionOnboarding` flow first, then `VisionPanel`
-  (editable, re-opens the flow) above a **Trajectory | Buckets | Investments | Spending**
-  toggle: `FinancialDashboard` (controlled `inputs`/`proj`; the captured goal seeds its
+  (editable, re-opens the flow) above a **Trajectory | Buckets | Investments | Spending |
+  Inbox** toggle: `FinancialDashboard` (controlled `inputs`/`proj`; the captured goal seeds its
   annual spend), `buckets/BucketsPanel`, `investments/InvestmentsPanel` (portfolio value +
   by-kind breakdown + 1-year look-ahead, with `investments/HoldingEditor` as the
   add/edit modal — which also captures the per-holding `history`). Clicking a holding
@@ -151,7 +170,10 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   headline compared against the vision's target spend, a by-category breakdown bar, and
   the transaction list (newest-first; click a row to edit); `spending/TransactionEditor`
   is the add/edit modal. Manual entry today — imported statement rows will reconcile into
-  the same list once the ingestion inbox lands.
+  the same list once the ingestion inbox lands. The **Inbox** view (`inbox/InboxPanel`) is
+  the head of that pipeline: a capture card (source toggle, CSV upload **or** paste, or a
+  free-text note) that queues a `pending` item, above the queue list with per-item status
+  chips and dismiss. Capture is the only stage wired; processing into spending is next.
 
 ## Data model & multi-tenancy
 
@@ -168,7 +190,10 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   per-instance **jsonb document** (`vision_state` / `buckets_state` / `investments_state`
   / `spending_state`). All five are **wired end-to-end** (one row per instance —
   `instanceId` is unique — loaded server-side on render and saved via their
-  `save*Action`s, each validated through its zod schema). The user's default instance is
+  `save*Action`s, each validated through its zod schema). The **`inbox_item`** table is
+  the different shape: **many rows per instance** (not unique), each a dropped artifact
+  with its own `status` lifecycle and a `(instance_id, status)` index for the list/drain
+  queries — owner-scoped through the same DAL discipline. The user's default instance is
   lazily created on first save.
 
 ## Security (utmost priority)

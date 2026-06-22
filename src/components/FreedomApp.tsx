@@ -6,12 +6,14 @@ import { fireStyleMeta, type FreedomVision } from "@/lib/vision";
 import type { BucketsState } from "@/lib/buckets";
 import type { InvestmentsState } from "@/lib/investments";
 import type { SpendingState } from "@/lib/spending";
+import type { InboxItem, NewInboxItemInput } from "@/lib/inbox";
 import VisionOnboarding from "./onboarding/VisionOnboarding";
 import VisionPanel from "./VisionPanel";
 import FinancialDashboard from "./FinancialDashboard";
 import BucketsPanel from "./buckets/BucketsPanel";
 import InvestmentsPanel from "./investments/InvestmentsPanel";
 import SpendingPanel from "./spending/SpendingPanel";
+import InboxPanel from "./inbox/InboxPanel";
 
 /**
  * Reality + assumptions a fresh user starts from. The *goal* side (annual spend)
@@ -201,7 +203,12 @@ const SEED_SPENDING: SpendingState = {
   ],
 };
 
-type FinancialView = "trajectory" | "buckets" | "investments" | "spending";
+type FinancialView =
+  | "trajectory"
+  | "buckets"
+  | "investments"
+  | "spending"
+  | "inbox";
 
 type SaveState = "idle" | "saving" | "saved";
 
@@ -245,6 +252,8 @@ interface FreedomAppProps {
   initialInvestments: InvestmentsState | null;
   /** Persisted spending state, or null to use the illustrative seed. */
   initialSpending: SpendingState | null;
+  /** The instance's inbox items (newest-first), loaded server-side; may be empty. */
+  initialInbox: InboxItem[];
   /** Server action persisting the engine inputs (auth/validation server-side). */
   saveInputsAction: (inputs: FinancialInputs) => Promise<{ ok: true }>;
   /** Server action persisting the captured vision. */
@@ -255,6 +264,10 @@ interface FreedomAppProps {
   saveInvestmentsAction: (investments: InvestmentsState) => Promise<{ ok: true }>;
   /** Server action persisting the spending state. */
   saveSpendingAction: (spending: SpendingState) => Promise<{ ok: true }>;
+  /** Server action capturing a new inbox item; returns the created item. */
+  addInboxItemAction: (input: NewInboxItemInput) => Promise<InboxItem>;
+  /** Server action dismissing an inbox item. */
+  dismissInboxItemAction: (id: string) => Promise<{ ok: true }>;
   /** Server action that signs the user out. */
   signOutAction: () => Promise<void>;
   /** Display name (or email) of the signed-in user. */
@@ -275,11 +288,14 @@ export default function FreedomApp({
   initialBuckets,
   initialInvestments,
   initialSpending,
+  initialInbox,
   saveInputsAction,
   saveVisionAction,
   saveBucketsAction,
   saveInvestmentsAction,
   saveSpendingAction,
+  addInboxItemAction,
+  dismissInboxItemAction,
   signOutAction,
   userName,
   authBypassed = false,
@@ -295,6 +311,9 @@ export default function FreedomApp({
   const [spending, setSpending] = useState<SpendingState>(
     initialSpending ?? SEED_SPENDING,
   );
+  // The inbox is a real per-row queue (not a seeded document) — start from what the
+  // server loaded and update locally as items are captured/dismissed.
+  const [inbox, setInbox] = useState<InboxItem[]>(initialInbox);
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
   const proj = useMemo(() => project(inputs), [inputs]);
@@ -309,6 +328,20 @@ export default function FreedomApp({
 
   const onChange = (key: keyof FinancialInputs, value: number) =>
     setInputs((prev) => ({ ...prev, [key]: value }));
+
+  // Inbox capture/dismiss go straight through their server actions (the source of
+  // truth is the DB, not seeded client state), updating the local list from the result.
+  const addInboxItem = async (input: NewInboxItemInput) => {
+    const item = await addInboxItemAction(input);
+    setInbox((prev) => [item, ...prev]);
+  };
+
+  const dismissInboxItem = async (id: string) => {
+    await dismissInboxItemAction(id);
+    setInbox((prev) =>
+      prev.map((i) => (i.id === id ? { ...i, status: "dismissed" } : i)),
+    );
+  };
 
   const completeVision = (v: FreedomVision) => {
     setVision(v);
@@ -405,6 +438,7 @@ export default function FreedomApp({
                 { id: "buckets", label: "Buckets" },
                 { id: "investments", label: "Investments" },
                 { id: "spending", label: "Spending" },
+                { id: "inbox", label: "Inbox" },
               ] as const
             ).map((v) => (
               <button
@@ -428,11 +462,17 @@ export default function FreedomApp({
             <BucketsPanel state={buckets} onChange={setBuckets} />
           ) : view === "investments" ? (
             <InvestmentsPanel state={investments} onChange={setInvestments} />
-          ) : (
+          ) : view === "spending" ? (
             <SpendingPanel
               state={spending}
               onChange={setSpending}
               targetAnnualSpend={inputs.annualSpend}
+            />
+          ) : (
+            <InboxPanel
+              items={inbox}
+              onAdd={addInboxItem}
+              onDismiss={dismissInboxItem}
             />
           )}
         </>

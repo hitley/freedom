@@ -7,6 +7,7 @@ import {
   primaryKey,
   uuid,
   jsonb,
+  index,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccountType } from "next-auth/adapters";
 
@@ -148,3 +149,30 @@ export const spendingStates = pgTable("spending_state", {
   data: jsonb("data").notNull(),
   updatedAt: timestamp("updated_at", { mode: "date" }).notNull().defaultNow(),
 });
+
+/**
+ * Ingestion inbox — the durable queue at the head of the bookkeeper pipeline. Unlike
+ * the jsonb-document tables above, this is **one row per dropped artifact** with an
+ * independent lifecycle (`status`), processed asynchronously. `raw` holds the artifact
+ * inline (CSV/text) for now; binaries move to blob storage with a reference later. The
+ * `(instance_id, status)` index serves the two hot queries: an instance's inbox list,
+ * and a processor draining `pending` items. See `src/lib/inbox` + `src/lib/server/inbox.ts`.
+ */
+export const inboxItems = pgTable(
+  "inbox_item",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    instanceId: uuid("instance_id")
+      .notNull()
+      .references(() => instances.id, { onDelete: "cascade" }),
+    source: text("source").notNull(),
+    label: text("label").notNull(),
+    raw: text("raw").notNull(),
+    status: text("status").notNull().default("pending"),
+    extracted: jsonb("extracted"),
+    error: text("error"),
+    createdAt: timestamp("created_at", { mode: "date" }).notNull().defaultNow(),
+    processedAt: timestamp("processed_at", { mode: "date" }),
+  },
+  (t) => [index("inbox_item_instance_status_idx").on(t.instanceId, t.status)],
+);

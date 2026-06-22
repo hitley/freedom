@@ -22,6 +22,13 @@
       "when": 1782119915504,
       "tag": "0002_groovy_maggott",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782120754386,
+      "tag": "0003_lying_random",
+      "breakpoints": true
     }
   ]
 }

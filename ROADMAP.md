@@ -114,14 +114,18 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
 
 ## Ingestion (manual now → automated)
 
-- **Async inbox & bookkeeper pipeline — designed (2026-06-21).** Drop financial
+- **Async inbox & bookkeeper pipeline — building (designed 2026-06-21).** Drop financial
   artifacts (CSV statements, bills, notes) into an inbox/queue processed async into the
   state model via a four-stage pipeline (Capture → Extract → Propose → Reconcile), with
   user approval before anything touches live numbers. Decided: Vercel Cron runner,
   propose-then-approve, **bank CSV first** (deterministic, AI-free spine), a new `inbox`
   table + new `spending` domain whose `annualisedSpend` feeds the vision's target spend.
-  Full design, forks, and build order in `design-notes/001-ingestion-inbox-bookkeeper.md`
-  (local; see `design-notes/README.md`).
+  **Landed so far:** the `spending` domain (persisted + Spending UI) and the inbox
+  **Capture** stage (`inbox_item` table, DAL, Inbox tab — drop CSV/text → `pending`).
+  **Next:** the Extract stage (deterministic CSV parse → dedupe → `proposed` drafts), a
+  Vercel Cron `/api/inbox/process` runner, and the review/approve screen. Full design,
+  forks, and build order in `design-notes/001-ingestion-inbox-bookkeeper.md` (local; see
+  `design-notes/README.md`).
 - **CSV / statement upload** behind the existing clean ingestion interface.
 - **Open Banking / Plaid** automation later, slotting in without touching the engine.
 - **Live market prices** via the `PriceProvider` seam (broker / market-data API) —
