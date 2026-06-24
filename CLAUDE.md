@@ -181,13 +181,23 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   recorded past (solid line, left of a "today" divider) flowing into a dashed
   projection (right of it), driven by live what-if sliders (monthly contribution +
   estimated growth %, seeded from the holding but non-destructive), with a year-by-year
-  growth breakdown below; "Minimise" returns to the overview. The buckets view leads
+  growth breakdown below; "Minimise" returns to the overview. This **maximise-to-detail
+  interaction is a reusable shell** (`src/components/detail/`): `DetailShell` (the
+  glyph/title/subtitle header + Edit/Minimise chrome), `ProjectionChart` (the generic
+  past+projected SVG — today divider, gridlines, hover scrubber, optional horizontal
+  reference line, with a domain-supplied `tooltipLines(series, idx)` callback) plus its
+  `HorizonSelector`, and `primitives` (`Stat`, `Slider`, `compactMoney`). `HoldingDetail`
+  is built on it, and so is the buckets equivalent. The buckets view leads
   with `buckets/BucketsTimeline` (a
   hand-built SVG look-ahead chart of projected balances, with a horizon selector and
   hover scrubber), an accounts strip with an "as of" selector that projects each
-  account forward, and bucket cards; `BucketEditor` (incl. per-bucket scheduled
-  payments) / `AccountsEditor` are modals. Buckets are independent of the projection
-  engine for now — feeding bucket totals into the engine is a future step. The
+  account forward, and bucket cards; clicking a card **maximises** it into
+  `buckets/BucketDetail` (same shell) — a forward-only projection of that single bucket's
+  balance (via `simulate`), with the goal drawn as a reference line, the projected hit
+  date in the headline, and a live "extra monthly contribution" what-if lever (a
+  synthetic `in` cashflow) that shows how much sooner the goal lands. `BucketEditor` (incl.
+  per-bucket scheduled payments) / `AccountsEditor` are modals. Buckets are independent of
+  the projection engine for now — feeding bucket totals into the engine is a future step. The
   **Spending** view (`spending/SpendingPanel`) leads with the **annualised-spend**
   headline compared against the vision's target spend, a by-category breakdown bar, and
   the transaction list (newest-first; click a row to edit); `spending/TransactionEditor`
@@ -278,6 +288,14 @@ persistence will error until `.env.local` is populated and migrations are run.
   `*Editor` **modal** (assembles one item, returns it via `onSave`). Reuse the
   recurrence engine (`occurrences`, `addMonths`, `startOfDay`, `toISO`) from
   `@/lib/buckets` rather than reinventing scheduling.
+- **A maximised detail view = the shared shell** (`src/components/detail/`). A panel
+  holds a `detailId` state; when set it renders `<DetailShell>` (header + Minimise)
+  wrapping headline `Stat`s, a `<ProjectionChart>` (pass `actual`/`projected` point
+  arrays, a `tooltipLines` callback, an optional `reference` line, a `HorizonSelector`
+  as `headerRight`), and `Slider` what-if levers. Cards become clickable
+  (`role="button"` + `onClick` setting `detailId`); the card's Edit button
+  `stopPropagation`s. Don't rebuild the SVG chart, scrubber, or `Stat`/`Slider`
+  per domain — `HoldingDetail` and `BucketDetail` are the worked examples.
 - **Test the pure domain, not the UI.** Each `src/lib/<domain>` gets an
   `index.test.ts` next to it (Vitest, Node env, `@` alias works). The domains are
   designed I/O-free precisely so this is cheap — add cases when you add helpers.

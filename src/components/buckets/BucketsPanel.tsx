@@ -16,6 +16,7 @@ import {
 } from "@/lib/buckets";
 import BucketsTimeline from "./BucketsTimeline";
 import BucketEditor from "./BucketEditor";
+import BucketDetail from "./BucketDetail";
 import AccountsEditor from "./AccountsEditor";
 
 const AS_OF = [
@@ -62,6 +63,8 @@ export default function BucketsPanel({
 }) {
   // null = closed; a Bucket = editing/adding that bucket.
   const [editingBucket, setEditingBucket] = useState<Bucket | null>(null);
+  // null = overview; a bucket id = its maximised detail view.
+  const [detailId, setDetailId] = useState<string | null>(null);
   const [editingAccounts, setEditingAccounts] = useState(false);
   const [asOfMonths, setAsOfMonths] = useState<(typeof AS_OF)[number]["id"]>(0);
 
@@ -98,7 +101,33 @@ export default function BucketsPanel({
   const deleteBucket = (id: string) => {
     onChange({ ...state, buckets: state.buckets.filter((b) => b.id !== id) });
     setEditingBucket(null);
+    if (detailId === id) setDetailId(null);
   };
+
+  // Maximised single-bucket view. The editor can still open on top of it.
+  const detailBucket = state.buckets.find((b) => b.id === detailId);
+  if (detailBucket) {
+    return (
+      <>
+        <BucketDetail
+          bucket={detailBucket}
+          accounts={state.accounts}
+          onEdit={() => setEditingBucket(detailBucket)}
+          onClose={() => setDetailId(null)}
+        />
+        {editingBucket && (
+          <BucketEditor
+            bucket={editingBucket}
+            accounts={state.accounts}
+            existing={state.buckets.some((b) => b.id === editingBucket.id)}
+            onSave={saveBucket}
+            onDelete={deleteBucket}
+            onCancel={() => setEditingBucket(null)}
+          />
+        )}
+      </>
+    );
+  }
 
   return (
     <section>
@@ -249,7 +278,16 @@ export default function BucketsPanel({
             return (
               <div
                 key={bucket.id}
-                className="rounded-2xl border border-border bg-surface p-5"
+                role="button"
+                tabIndex={0}
+                onClick={() => setDetailId(bucket.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    setDetailId(bucket.id);
+                  }
+                }}
+                className="cursor-pointer rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-muted/50"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
@@ -267,7 +305,10 @@ export default function BucketsPanel({
                   </div>
                   <button
                     type="button"
-                    onClick={() => setEditingBucket(bucket)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingBucket(bucket);
+                    }}
                     className="shrink-0 rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-muted/50 hover:text-foreground"
                   >
                     Edit
