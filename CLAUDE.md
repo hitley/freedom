@@ -124,8 +124,12 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   provenance, **dedupes** against the spending ledger, and moves the item to `proposed`
   with the fresh drafts on `extracted`. It's synchronous behind a manual "Process" button
   for now — the same function will be the body of a Vercel Cron `/api/inbox/process`
-  runner. The **Reconcile** stage (review/approve `proposed` drafts into spending) is next;
-  free-text/PDF Extract awaits the LLM stage.
+  runner. **Reconcile** (`src/lib/server/reconcile.ts`, `reconcileInboxItem`) is the only
+  point that touches the live ledger, and only on approval: it validates the user-approved
+  subset really came from this item (categories may be edited, rows dropped — nothing
+  foreign smuggled in), dedupes again, appends to spending, and flips the item to
+  `applied`. **The full pipeline now runs end-to-end** (drop → process → review → applied →
+  in spending); free-text/PDF Extract awaits the LLM stage.
 - **Access layer** (`src/lib/server/`): the server-only data-access layer (DAL).
   `instance.ts` is the authorization choke-point — `requireUser` (cached `auth()`),
   `getDefaultInstance` (read-only; `null` if none), `getOrCreateDefaultInstance`
@@ -145,8 +149,10 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   resolved instance in the `WHERE`). `extract.ts` (`processInboxItem`) orchestrates the
   Extract stage on top of these — read a `pending` CSV item, parse, dedupe against the
   loaded spending, write `proposed` drafts back — and is the same function a cron runner
-  will call. Thin `"use server"` actions in `src/app/actions.ts` delegate here; auth +
-  validation live in the DAL, never the action.
+  will call. `reconcile.ts` (`reconcileInboxItem`) closes the loop: validate the approved
+  subset belongs to the item, append to spending, mark `applied`. Thin `"use server"`
+  actions in `src/app/actions.ts` delegate here; auth + validation live in the DAL, never
+  the action.
 - **UI flow** (`src/components/`): `FreedomApp` orchestrates the financial
   dimension. **All domains are persisted per-instance** — `page.tsx` loads `inputs` /
   `vision` / `buckets` / `investments` / `spending` plus the `inbox` list server-side
@@ -155,8 +161,10 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   it's a live per-row queue, so capture/dismiss go straight through `addInboxItemAction` /
   `dismissInboxItemAction` (which `revalidatePath` the route), updating the local list from
   the result rather than debounced-saving a document; a pending CSV item also has a
-  **Process** action (`processInboxItemAction`) that runs Extract and shows the proposed
-  drafts inline. `inputs`, `buckets`, `investments`,
+  **Process** action (`processInboxItemAction`) that runs Extract, and a proposal's
+  **Reconcile** (`reconcileInboxItemAction`) returns *both* the applied item and the new
+  spending state so `FreedomApp` updates the inbox and the ledger in one go. `inputs`,
+  `buckets`, `investments`,
   and `spending` save **debounced** (via the `useDebouncedSave` hook, which skips the
   first run so seeding doesn't write back); the `vision` is saved **explicitly** when the
   capture flow completes. Each `load*` returns `null` for a fresh instance, so the UI
@@ -189,8 +197,10 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   free-text note) that queues a `pending` item, above the queue list with per-item status
   chips, a **Process** button on pending CSV items, and dismiss. Processing a CSV runs the
   Extract stage and shows an inline "N transactions ready to review" summary (deduped count
-  + spend total) on the now-`proposed` item; the review/approve screen that applies those
-  drafts to the ledger is the next stage.
+  + spend total) on the now-`proposed` item; a **Review** button opens `inbox/ReviewModal`,
+  where each draft can be re-categorised or dropped before approving the rest into the
+  spending ledger (`onReconcile` → the item goes `applied` and the new transactions appear
+  in the Spending view, tagged "imported").
 
 ## Data model & multi-tenancy
 

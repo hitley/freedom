@@ -5,7 +5,7 @@ import { project, type FinancialInputs } from "@/lib/finance";
 import { fireStyleMeta, type FreedomVision } from "@/lib/vision";
 import type { BucketsState } from "@/lib/buckets";
 import type { InvestmentsState } from "@/lib/investments";
-import type { SpendingState } from "@/lib/spending";
+import type { SpendingState, Transaction } from "@/lib/spending";
 import type { InboxItem, NewInboxItemInput } from "@/lib/inbox";
 import VisionOnboarding from "./onboarding/VisionOnboarding";
 import VisionPanel from "./VisionPanel";
@@ -270,6 +270,11 @@ interface FreedomAppProps {
   dismissInboxItemAction: (id: string) => Promise<{ ok: true }>;
   /** Server action running the Extract stage on a CSV item; returns the updated item. */
   processInboxItemAction: (id: string) => Promise<InboxItem>;
+  /** Server action approving a proposal's drafts into the ledger (Reconcile). */
+  reconcileInboxItemAction: (
+    id: string,
+    approved: Transaction[],
+  ) => Promise<{ item: InboxItem; spending: SpendingState }>;
   /** Server action that signs the user out. */
   signOutAction: () => Promise<void>;
   /** Display name (or email) of the signed-in user. */
@@ -299,6 +304,7 @@ export default function FreedomApp({
   addInboxItemAction,
   dismissInboxItemAction,
   processInboxItemAction,
+  reconcileInboxItemAction,
   signOutAction,
   userName,
   authBypassed = false,
@@ -349,6 +355,13 @@ export default function FreedomApp({
   const processInboxItem = async (id: string) => {
     const updated = await processInboxItemAction(id);
     setInbox((prev) => prev.map((i) => (i.id === id ? updated : i)));
+  };
+
+  const reconcileInboxItem = async (id: string, approved: Transaction[]) => {
+    const { item, spending: nextSpending } = await reconcileInboxItemAction(id, approved);
+    setInbox((prev) => prev.map((i) => (i.id === id ? item : i)));
+    // The ledger already persisted server-side; mirror it locally so Spending reflects it.
+    setSpending(nextSpending);
   };
 
   const completeVision = (v: FreedomVision) => {
@@ -482,6 +495,7 @@ export default function FreedomApp({
               onAdd={addInboxItem}
               onDismiss={dismissInboxItem}
               onProcess={processInboxItem}
+              onReconcile={reconcileInboxItem}
             />
           )}
         </>

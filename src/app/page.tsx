@@ -17,6 +17,7 @@ import {
   addInboxItemAction,
   dismissInboxItemAction,
   processInboxItemAction,
+  reconcileInboxItemAction,
 } from "./actions";
 
 export default async function Home() {
@@ -63,6 +64,7 @@ export default async function Home() {
         addInboxItemAction={addInboxItemAction}
         dismissInboxItemAction={dismissInboxItemAction}
         processInboxItemAction={processInboxItemAction}
+        reconcileInboxItemAction={reconcileInboxItemAction}
         signOutAction={signOutAction}
         authBypassed={bypass}
         userName={

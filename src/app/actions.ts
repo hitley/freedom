@@ -8,11 +8,12 @@ import { saveInvestments } from "@/lib/server/investments";
 import { saveSpending } from "@/lib/server/spending";
 import { addInboxItem, setInboxStatus } from "@/lib/server/inbox";
 import { processInboxItem } from "@/lib/server/extract";
+import { reconcileInboxItem } from "@/lib/server/reconcile";
 import type { FinancialInputsInput } from "@/lib/finance";
 import type { FreedomVisionInput } from "@/lib/vision";
 import type { BucketsStateInput } from "@/lib/buckets";
 import type { InvestmentsStateInput } from "@/lib/investments";
-import type { SpendingStateInput } from "@/lib/spending";
+import type { SpendingState, SpendingStateInput, Transaction } from "@/lib/spending";
 import type { InboxItem, NewInboxItemInput } from "@/lib/inbox";
 
 /**
@@ -84,4 +85,17 @@ export async function processInboxItemAction(id: string): Promise<InboxItem> {
   const item = await processInboxItem(id);
   revalidatePath("/");
   return item;
+}
+
+/**
+ * Approve a proposal's drafts into the spending ledger (the Reconcile stage). Returns
+ * the now-`applied` item and the updated spending state so the client can reflect both.
+ */
+export async function reconcileInboxItemAction(
+  id: string,
+  approved: Transaction[],
+): Promise<{ item: InboxItem; spending: SpendingState }> {
+  const result = await reconcileInboxItem(id, approved);
+  revalidatePath("/");
+  return result;
 }

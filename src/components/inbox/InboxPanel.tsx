@@ -9,7 +9,12 @@ import {
   type InboxItem,
   type NewInboxItemInput,
 } from "@/lib/inbox";
-import { proposedTransactionsSchema, type ProposedTransactions } from "@/lib/spending";
+import {
+  proposedTransactionsSchema,
+  type ProposedTransactions,
+  type Transaction,
+} from "@/lib/spending";
+import ReviewModal from "./ReviewModal";
 
 const gbp0 = new Intl.NumberFormat("en-GB", {
   style: "currency",
@@ -52,20 +57,28 @@ export default function InboxPanel({
   onAdd,
   onDismiss,
   onProcess,
+  onReconcile,
 }: {
   items: InboxItem[];
   onAdd: (input: NewInboxItemInput) => Promise<void>;
   onDismiss: (id: string) => Promise<void>;
   onProcess: (id: string) => Promise<void>;
+  onReconcile: (id: string, approved: Transaction[]) => Promise<void>;
 }) {
   const [source, setSource] = useState<CapturableSource>("csv");
   // Id of the item currently being processed, for a per-row busy state.
   const [processingId, setProcessingId] = useState<string | null>(null);
+  // The proposed item currently open in the review modal, if any.
+  const [reviewId, setReviewId] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [raw, setRaw] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  // The item open for review (only while it's still a live proposal).
+  const reviewItem =
+    items.find((it) => it.id === reviewId && it.status === "proposed") ?? null;
 
   const tooBig = raw.length > MAX_RAW_CHARS;
   const canAdd = label.trim().length > 0 && raw.trim().length > 0 && !tooBig && !busy;
@@ -248,6 +261,15 @@ export default function InboxPanel({
                       {isProcessing ? "Processing…" : item.status === "failed" ? "Retry" : "Process"}
                     </button>
                   )}
+                  {item.status === "proposed" && (
+                    <button
+                      type="button"
+                      onClick={() => setReviewId(item.id)}
+                      className="shrink-0 rounded-full bg-emerald px-3 py-1 text-xs font-semibold text-background transition-opacity hover:opacity-90"
+                    >
+                      Review
+                    </button>
+                  )}
                   {isActive(item) && (
                     <button
                       type="button"
@@ -274,7 +296,7 @@ export default function InboxPanel({
                       {proposed.skipped > 0 && `, ${proposed.skipped} row${proposed.skipped === 1 ? "" : "s"} unread`})
                     </span>
                     <span className="mt-0.5 block text-muted/70">
-                      The review &amp; approve screen lands in the next stage.
+                      Hit Review to check the categories and add them to your spending.
                     </span>
                   </div>
                 )}
@@ -289,6 +311,17 @@ export default function InboxPanel({
             );
           })}
         </div>
+      )}
+
+      {reviewItem && (
+        <ReviewModal
+          item={reviewItem}
+          onApprove={async (id, approved) => {
+            await onReconcile(id, approved);
+            setReviewId(null);
+          }}
+          onCancel={() => setReviewId(null)}
+        />
       )}
     </section>
   );

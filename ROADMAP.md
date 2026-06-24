@@ -120,13 +120,15 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   user approval before anything touches live numbers. Decided: Vercel Cron runner,
   propose-then-approve, **bank CSV first** (deterministic, AI-free spine), a new `inbox`
   table + new `spending` domain whose `annualisedSpend` feeds the vision's target spend.
-  **Landed so far:** the `spending` domain (persisted + Spending UI), the inbox
-  **Capture** stage (`inbox_item` table, DAL, Inbox tab — drop CSV/text → `pending`), and
-  the **Extract** stage (deterministic `parseStatementCsv` → dedupe → `proposed` drafts,
-  behind a manual "Process" button). **Next:** the **Reconcile** stage — a review/approve
-  screen that inserts approved drafts into the spending ledger — then a Vercel Cron
-  `/api/inbox/process` runner wrapping the existing `processInboxItem`, and later the LLM
-  Extract for bills/photos/free text. Full design, forks, and build order in
+  **The deterministic pipeline now runs end-to-end:** the `spending` domain (persisted +
+  Spending UI), inbox **Capture** (`inbox_item` table, DAL, Inbox tab — drop CSV/text →
+  `pending`), **Extract** (`parseStatementCsv` → dedupe → `proposed`, behind a manual
+  "Process" button), and **Reconcile** (the `ReviewModal` — re-categorise/drop drafts,
+  approve into the ledger → `applied`, tagged "imported"). **Next:** a Vercel Cron
+  `/api/inbox/process` runner wrapping the existing `processInboxItem` (so processing is
+  automatic, not manual); the LLM Extract for bills/photos/free text; and the deferred
+  bits — transaction↔cashflow matching, per-bank CSV column mapping, blob storage for
+  PDFs/images. Full design, forks, and build order in
   `design-notes/001-ingestion-inbox-bookkeeper.md` (local; see `design-notes/README.md`).
 - **CSV / statement upload** behind the existing clean ingestion interface.
 - **Open Banking / Plaid** automation later, slotting in without touching the engine.
