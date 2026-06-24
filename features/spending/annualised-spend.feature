@@ -1,3 +1,4 @@
+@source:src/lib/spending/index.ts @source:src/lib/spending/types.ts
 Feature: Reading a year of spend from observed transactions
   "What does a year of my life actually cost?" is the number that feeds the vision's
   target spend, the magic number, and ultimately the freedom date. Rather than make

@@ -7,5 +7,20 @@
       "mcp__Claude_Preview__preview_snapshot",
       "Bash(npx tsc --noEmit*)"
     ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/claude-feature-hook.mjs",
+            "timeout": 60,
+            "statusMessage": "Syncing feature docs & specs"
+          }
+        ]
+      }
+    ]
   }
 }

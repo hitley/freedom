@@ -1,3 +1,4 @@
+@source:src/lib/server/reconcile.ts @source:src/lib/spending/index.ts
 Feature: Reconcile approved proposals into the spending ledger
   Reconcile is the final pipeline stage and the only point where a proposal touches
   the live spending ledger — and only on the user's say-so. The user reviews a

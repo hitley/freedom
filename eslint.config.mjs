@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Generated VitePress build output (the docs source lives in docs/features/**).
+    "public/docs/**",
+    "docs/.vitepress/dist/**",
+    "docs/.vitepress/cache/**",
   ]),
 ]);
 

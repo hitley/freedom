@@ -1,0 +1,26 @@
+[
+  {
+    "text": "Ingestion",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "Extract bank statements into reviewable proposals",
+        "link": "/features/ingestion/extract"
+      },
+      {
+        "text": "Reconcile approved proposals into the spending ledger",
+        "link": "/features/ingestion/reconcile"
+      }
+    ]
+  },
+  {
+    "text": "Spending",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "Reading a year of spend from observed transactions",
+        "link": "/features/spending/annualised-spend"
+      }
+    ]
+  }
+]

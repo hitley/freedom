@@ -279,6 +279,10 @@ persistence will error until `.env.local` is populated and migrations are run.
 - `npm run test:e2e` — Playwright journey(s) in `e2e/` (needs a `DATABASE_URL` in
   `.env.local`; launches the dev server on port 3100 with `AUTH_DEV_BYPASS=true`). First
   run needs browsers: `npx playwright install chromium`.
+- `npm run docs:generate` — regenerate the VitePress feature docs from `features/**`.
+  `npm run docs:dev` to preview, `npm run docs:build` to build into `public/docs`
+  (served at `/docs`). `npm run docs:check` fails if the committed docs are stale;
+  `npm run docs:affected -- --run` runs the specs a changed path maps to.
 - `npm run lint` — Next.js lint. Type-check: `npx tsc --noEmit`.
 - `npx drizzle-kit generate` — create a migration from schema changes.
 - `npx drizzle-kit migrate` — apply migrations to `DATABASE_URL`.
@@ -316,6 +320,16 @@ persistence will error until `.env.local` is populated and migrations are run.
   net. Step text uses cucumber expressions (`{string}`, `{number}`); `And` steps must be
   registered with `And` (matching is type-sensitive). Prefer adding a scenario to an
   existing feature over a new unit test when you're pinning *intended behaviour*.
+- **The `.feature` files are also the docs.** They generate the VitePress site served at
+  `/docs` (`scripts/feature-docs.mjs` parses them with the *same* `loadFeature`; output is
+  the committed `docs/features/**` Markdown, built into `public/docs`). So: write the
+  `Feature:` block as user-facing prose, and tag each feature with `@source:<path>` lines
+  naming the application paths it validates. A **PostToolUse hook**
+  (`scripts/claude-feature-hook.mjs`, `.claude/settings.json`) auto-regenerates the docs
+  and runs the affected specs when you edit a `.feature` or a tagged `src/` path — if you
+  change a `.feature`, commit the regenerated `docs/features/**` alongside it
+  (`npm run docs:check` enforces this). Add a `@source` tag when a new spec covers a path,
+  or the hook will flag that path as uncovered.
 - **Tailwind exposes only the base palette** (`emerald`, `gold`, `muted`, `surface`,
   `surface-2`, `border`, `foreground` — see `@theme inline` in `globals.css`). There
   is **no** `-dim` utility; shade with opacity (`bg-emerald/50`), not `bg-emerald-dim`.

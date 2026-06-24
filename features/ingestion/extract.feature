@@ -1,3 +1,4 @@
+@source:src/lib/server/extract.ts @source:src/lib/spending/csv.ts @source:src/lib/spending/index.ts
 Feature: Extract bank statements into reviewable proposals
   The ingestion pipeline turns a dropped artifact into structured facts in four
   stages: Capture → Extract → Propose → Reconcile. This is the Extract → Propose

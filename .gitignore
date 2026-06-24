@@ -48,6 +48,12 @@ yarn-error.log*
 /blob-report
 /playwright/.cache
 
+# vitepress build output + cache (the generated Markdown under docs/features IS
+# committed — it's the staleness-checked artifact; only the built site is ignored)
+/public/docs
+/docs/.vitepress/cache
+/docs/.vitepress/dist
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
