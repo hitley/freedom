@@ -273,7 +273,12 @@ persistence will error until `.env.local` is populated and migrations are run.
 ## Commands
 
 - `npm run dev` — local app at http://localhost:3000.
-- `npm test` — Vitest (pure-`lib` unit tests); `npm run test:watch` to watch.
+- `npm test` — Vitest: pure-`lib` unit tests **plus** the Gherkin behavioural specs
+  under `features/` (`@amiceli/vitest-cucumber`); `npm run test:watch` to watch.
+- `npm run test:bdd` — just the `features/` behavioural specs.
+- `npm run test:e2e` — Playwright journey(s) in `e2e/` (needs a `DATABASE_URL` in
+  `.env.local`; launches the dev server on port 3100 with `AUTH_DEV_BYPASS=true`). First
+  run needs browsers: `npx playwright install chromium`.
 - `npm run lint` — Next.js lint. Type-check: `npx tsc --noEmit`.
 - `npx drizzle-kit generate` — create a migration from schema changes.
 - `npx drizzle-kit migrate` — apply migrations to `DATABASE_URL`.
@@ -299,6 +304,18 @@ persistence will error until `.env.local` is populated and migrations are run.
 - **Test the pure domain, not the UI.** Each `src/lib/<domain>` gets an
   `index.test.ts` next to it (Vitest, Node env, `@` alias works). The domains are
   designed I/O-free precisely so this is cheap — add cases when you add helpers.
+- **Behaviour & intent = a Gherkin spec, in two tiers** (design in
+  `design-notes/002-bdd-testing-and-living-docs.md`; these `.feature` files are also the
+  intended seed for generated VitePress `/docs`). Tier 1 lives in `features/<capability>/`:
+  a `.feature` file (user-facing prose + Given/When/Then) + a `*.steps.ts` binding it via
+  `@amiceli/vitest-cucumber`, run by Vitest. Two shapes — **pure domain** (steps call the
+  helpers directly, no infra — `features/spending/`) and **server pipeline** (drives the
+  real `extract.ts`/`reconcile.ts` with the DAL swapped for `features/support/dal-fake.ts`
+  via `vi.mock`; `server-only` is aliased to a stub in `vitest.config.ts`). Tier 2 is
+  Playwright (`e2e/`) for the few full-stack journeys only — rationed, not a regression
+  net. Step text uses cucumber expressions (`{string}`, `{number}`); `And` steps must be
+  registered with `And` (matching is type-sensitive). Prefer adding a scenario to an
+  existing feature over a new unit test when you're pinning *intended behaviour*.
 - **Tailwind exposes only the base palette** (`emerald`, `gold`, `muted`, `surface`,
   `surface-2`, `border`, `foreground` — see `@theme inline` in `globals.css`). There
   is **no** `-dim` utility; shade with opacity (`bg-emerald/50`), not `bg-emerald-dim`.
