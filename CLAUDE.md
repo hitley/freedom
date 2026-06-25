@@ -179,9 +179,14 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   anywhere to dismiss); it shows the read-only `VisionPanel` when a vision exists (its
   Edit button re-enters the flow), or the guided `onboarding/VisionOnboarding` flow
   directly when none is set yet. Completing the flow saves and closes it. The
-  **Vision | Trajectory | Buckets | Investments | Spending |
+  **Vision | Trajectory | Investments | Buckets | Spending |
   Inbox** toggle drives: `FinancialDashboard` (controlled `inputs`/`proj`; the captured goal seeds its
-  annual spend), `buckets/BucketsPanel`, `investments/InvestmentsPanel` (portfolio value +
+  annual spend). The dashboard's **Reality** group no longer dials in "Invested today" /
+  "Saved per month" — those are **derived from the Investments domain** (portfolio
+  `totalValue` and `annualContributions ÷ 12` via `summariseInvestments`, merged into
+  `effectiveInputs` in `FreedomApp` so the projection tracks the real portfolio) and render
+  read-only with a "From Investments →" link that switches to that view; only `currentAge`
+  stays an editable dial there. Then `buckets/BucketsPanel`, `investments/InvestmentsPanel` (portfolio value +
   by-kind breakdown + 1-year look-ahead, with `investments/HoldingEditor` as the
   add/edit modal — which also captures the per-holding `history`). Clicking a holding
   tile **maximises** it into `investments/HoldingDetail`: one timeline showing the

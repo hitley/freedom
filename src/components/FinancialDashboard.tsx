@@ -21,10 +21,12 @@ export default function FinancialDashboard({
   inputs,
   proj,
   onChange,
+  onViewInvestments,
 }: {
   inputs: FinancialInputs;
   proj: Projection;
   onChange: (key: keyof FinancialInputs, value: number) => void;
+  onViewInvestments?: () => void;
 }) {
   const set = (key: keyof FinancialInputs) => (v: number) => onChange(key, v);
 
@@ -96,23 +98,17 @@ export default function FinancialDashboard({
       {/* controls */}
       <section className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <ControlGroup title="Reality" hint="Where you stand today">
-          <Dial
+          <Tracked
             label="Invested today"
             display={moneyShort(inputs.currentInvested)}
-            value={inputs.currentInvested}
-            min={0}
-            max={2_000_000}
-            step={5_000}
-            onChange={set("currentInvested")}
+            source="Investments"
+            onSource={onViewInvestments}
           />
-          <Dial
+          <Tracked
             label="Saved per month"
             display={gbp0.format(inputs.monthlyContribution)}
-            value={inputs.monthlyContribution}
-            min={0}
-            max={8_000}
-            step={50}
-            onChange={set("monthlyContribution")}
+            source="Investments"
+            onSource={onViewInvestments}
           />
           <Dial
             label="Current age"
@@ -208,6 +204,42 @@ function ControlGroup({
         <p className="text-xs text-muted">{hint}</p>
       </div>
       <div className="flex flex-col gap-5">{children}</div>
+    </div>
+  );
+}
+
+/**
+ * A read-only Reality figure that is tracked elsewhere (the Investments page) rather
+ * than dialled in here. Shows the live value with a button through to its source.
+ */
+function Tracked({
+  label,
+  display,
+  source,
+  onSource,
+}: {
+  label: string;
+  display: string;
+  source: string;
+  onSource?: () => void;
+}) {
+  return (
+    <div className="block">
+      <div className="mb-2 flex items-baseline justify-between">
+        <span className="text-sm text-muted">{label}</span>
+        <span className="text-sm font-medium text-foreground">{display}</span>
+      </div>
+      {onSource ? (
+        <button
+          type="button"
+          onClick={onSource}
+          className="text-xs text-emerald hover:underline"
+        >
+          From {source} →
+        </button>
+      ) : (
+        <span className="text-xs text-muted">From {source}</span>
+      )}
     </div>
   );
 }

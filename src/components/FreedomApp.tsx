@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { project, type FinancialInputs } from "@/lib/finance";
 import { fireStyleMeta, type FreedomVision } from "@/lib/vision";
 import type { BucketsState } from "@/lib/buckets";
-import type { InvestmentsState } from "@/lib/investments";
+import { summarise as summariseInvestments, type InvestmentsState } from "@/lib/investments";
 import type { SpendingState, Transaction } from "@/lib/spending";
 import type { InboxItem, NewInboxItemInput } from "@/lib/inbox";
 import VisionOnboarding from "./onboarding/VisionOnboarding";
@@ -330,7 +330,24 @@ export default function FreedomApp({
   const [inbox, setInbox] = useState<InboxItem[]>(initialInbox);
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
-  const proj = useMemo(() => project(inputs), [inputs]);
+  // "Invested today" and "Saved per month" are not edited on the trajectory — they
+  // are the real figures tracked on the Investments page (portfolio value + the
+  // monthly equivalent of the holdings' annual contributions). Derive them and feed
+  // the engine the merged inputs so the projection reflects the live portfolio.
+  const investmentsSummary = useMemo(
+    () => summariseInvestments(investments),
+    [investments],
+  );
+  const effectiveInputs = useMemo<FinancialInputs>(
+    () => ({
+      ...inputs,
+      currentInvested: investmentsSummary.totalValue,
+      monthlyContribution: Math.round(investmentsSummary.annualContributions / 12),
+    }),
+    [inputs, investmentsSummary],
+  );
+
+  const proj = useMemo(() => project(effectiveInputs), [effectiveInputs]);
 
   // Debounced persistence of each editable domain (vision is saved explicitly on
   // completion). The hook skips its first run so seeding from the server doesn't
@@ -470,8 +487,8 @@ export default function FreedomApp({
         {(
           [
             { id: "trajectory", label: "Trajectory" },
-            { id: "buckets", label: "Buckets" },
             { id: "investments", label: "Investments" },
+            { id: "buckets", label: "Buckets" },
             { id: "spending", label: "Spending" },
             { id: "inbox", label: "Inbox" },
           ] as const
@@ -492,7 +509,12 @@ export default function FreedomApp({
       </div>
 
       {view === "trajectory" ? (
-        <FinancialDashboard inputs={inputs} proj={proj} onChange={onChange} />
+        <FinancialDashboard
+          inputs={effectiveInputs}
+          proj={proj}
+          onChange={onChange}
+          onViewInvestments={() => setView("investments")}
+        />
       ) : view === "buckets" ? (
         <BucketsPanel state={buckets} onChange={setBuckets} />
       ) : view === "investments" ? (
