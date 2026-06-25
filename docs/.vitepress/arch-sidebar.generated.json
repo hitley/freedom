@@ -1,0 +1,48 @@
+[
+  {
+    "text": "Architecture",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "C1 · Context",
+        "link": "/architecture/"
+      },
+      {
+        "text": "C2 · Containers",
+        "link": "/architecture/containers"
+      },
+      {
+        "text": "C3 · Components",
+        "link": "/architecture/components/"
+      },
+      {
+        "text": "🧭 Vision",
+        "link": "/architecture/components/vision"
+      },
+      {
+        "text": "📊 Finance engine",
+        "link": "/architecture/components/finance"
+      },
+      {
+        "text": "🪣 Buckets",
+        "link": "/architecture/components/buckets"
+      },
+      {
+        "text": "📈 Investments",
+        "link": "/architecture/components/investments"
+      },
+      {
+        "text": "💸 Spending",
+        "link": "/architecture/components/spending"
+      },
+      {
+        "text": "📥 Inbox & ingestion",
+        "link": "/architecture/components/inbox"
+      },
+      {
+        "text": "C4 · Data model",
+        "link": "/architecture/data-model"
+      }
+    ]
+  }
+]

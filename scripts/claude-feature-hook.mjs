@@ -2,8 +2,10 @@
 // code changes. Wired in .claude/settings.json to run after Edit/Write/MultiEdit.
 //
 // It reads the hook payload on stdin, and *only* acts when the edited file is a
-// `.feature` file or an application path a feature declares via `@source`:
-//  - if a `.feature` changed → regenerate the docs (so docs/features stays current);
+// `.feature` file or a `src/` application path:
+//  - if a `.feature` changed → regenerate the behaviour docs (so docs/features stays current);
+//  - if a `src/` file changed and the generated architecture docs have drifted →
+//    regenerate docs/architecture/components;
 //  - run the affected behavioural specs (fast — only the relevant ones);
 //  - surface, but never block, so it's a nudge rather than a gate.
 //
@@ -73,6 +75,21 @@ if (isFeature) {
       ? "Regenerated docs/features from the changed .feature file — review and commit the generated Markdown."
       : "Tried to regenerate feature docs but it failed:\n" + gen.out.trim(),
   );
+}
+
+// A changed src file may change the generated *architecture* docs (a file's header
+// comment, its `types.ts` model, or context membership). Only regenerate — and nudge —
+// when they've actually drifted, so unrelated src edits stay quiet.
+if (isAppPath) {
+  const check = run("node", ["scripts/check-arch-docs.mjs"]);
+  if (!check.ok) {
+    const gen = run("node", ["scripts/generate-arch-docs.mjs"]);
+    notes.push(
+      gen.ok
+        ? "Regenerated docs/architecture/components from the changed source — review and commit the generated Markdown."
+        : "Tried to regenerate architecture docs but it failed:\n" + gen.out.trim(),
+    );
+  }
 }
 
 // Map the changed path to the behavioural specs that describe it, and run just those.

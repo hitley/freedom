@@ -11,8 +11,8 @@
     "test:watch": "vitest",
     "test:bdd": "vitest run features",
     "test:e2e": "playwright test",
-    "docs:generate": "node scripts/generate-feature-docs.mjs",
-    "docs:check": "node scripts/check-feature-docs.mjs",
+    "docs:generate": "node scripts/generate-feature-docs.mjs && node scripts/generate-arch-docs.mjs",
+    "docs:check": "node scripts/check-feature-docs.mjs && node scripts/check-arch-docs.mjs",
     "docs:affected": "node scripts/affected-specs.mjs",
     "docs:dev": "npm run docs:generate && vitepress dev docs",
     "docs:build": "npm run docs:generate && vitepress build docs"
@@ -37,9 +37,11 @@
     "drizzle-kit": "^0.31.10",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "mermaid": "^11.16.0",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vitepress": "^1.6.4",
+    "vitepress-plugin-mermaid": "^2.0.17",
     "vitest": "^4.1.9"
   }
 }

@@ -291,9 +291,11 @@ persistence will error until `.env.local` is populated and migrations are run.
 - `npm run test:e2e` — Playwright journey(s) in `e2e/` (needs a `DATABASE_URL` in
   `.env.local`; launches the dev server on port 3100 with `AUTH_DEV_BYPASS=true`). First
   run needs browsers: `npx playwright install chromium`.
-- `npm run docs:generate` — regenerate the VitePress feature docs from `features/**`.
-  `npm run docs:dev` to preview, `npm run docs:build` to build into `public/docs`
-  (served at `/docs`). `npm run docs:check` fails if the committed docs are stale;
+- `npm run docs:generate` — regenerate **both** generated doc trees: the **behaviour**
+  pages from `features/**` (`generate-feature-docs.mjs`) and the **architecture / C3
+  component** pages from `src/**` (`generate-arch-docs.mjs`). `npm run docs:dev` to preview,
+  `npm run docs:build` to build into `public/docs` (served at `/docs`; needs Mermaid —
+  `vitepress-plugin-mermaid`). `npm run docs:check` fails if either committed tree is stale;
   `npm run docs:affected -- --run` runs the specs a changed path maps to.
 - `npm run lint` — Next.js lint. Type-check: `npx tsc --noEmit`.
 - `npx drizzle-kit generate` — create a migration from schema changes.
@@ -342,6 +344,28 @@ persistence will error until `.env.local` is populated and migrations are run.
   change a `.feature`, commit the regenerated `docs/features/**` alongside it
   (`npm run docs:check` enforces this). Add a `@source` tag when a new spec covers a path,
   or the hook will flag that path as uncovered.
+- **Docs are organised by the C4 model, mapped onto the DDD structure** (the preferred
+  style — see https://c4model.com). Four altitudes, broadest first:
+  **C1 Context** — *why* the app exists and the external actors it talks to (the User/owner,
+  Google as identity provider, Neon Postgres, future Open-Banking/market-data feeds);
+  **C2 Containers** — read here as the **bounded contexts / modules**, not deploy units:
+  each `src/lib/<domain>` (vision, buckets, investments, spending, inbox), the finance
+  **engine**, **auth/tenancy**, the **ingestion pipeline**, the **web app**, the **docs site**;
+  **C3 Components** — the parts inside a context (the four-file `types`/`index`/`*Panel`/`*Editor`,
+  the DAL, shared engines like the recurrence engine + the detail shell), each cross-linked to
+  the **behaviours** (`.feature` pages) that validate it via the existing `@source` map;
+  **C4 Code** — the model types and the **database schema** (`docs/architecture/data-model.md`).
+  The Gherkin behaviours are the **dynamic** view; C4 is the **structural** view — keep them as
+  two complementary axes rather than collapsing one into the other. **The C3/C4 pages are
+  generated, not hand-written** (`scripts/arch-docs.mjs` + `generate-arch-docs.mjs`): C1/C2
+  (`docs/architecture/index.md` + `containers.md`) are hand-authored with **Mermaid** C4
+  diagrams, but each C3 component page is built from the source — file *Responsibility* cells
+  come from each file's **header comment**, the *Model* table from the context's `types.ts`
+  doc-comments, and *Behaviours* from the `@source`→feature map. To document a new bounded
+  context, add it to the `CONTEXTS` manifest in `arch-docs.mjs`; to enrich an existing page,
+  **improve the code's header comments / type docs** (the generator rewards better names and
+  comments — a file with no header shows `—`). `check-arch-docs.mjs` guards staleness. **Don't
+  restate `.feature` files verbatim** — reference the behaviour, summarise the intent.
 - **Tailwind exposes only the base palette** (`emerald`, `gold`, `muted`, `surface`,
   `surface-2`, `border`, `foreground` — see `@theme inline` in `globals.css`). There
   is **no** `-dim` utility; shade with opacity (`bg-emerald/50`), not `bg-emerald-dim`.
@@ -359,9 +383,14 @@ persistence will error until `.env.local` is populated and migrations are run.
 ## Conventions
 
 - Pure engine logic in `src/lib/` (no React, no DB). UI in `src/app` + components.
+- **Keep the design modular and DDD-aligned.** One **bounded context per
+  `src/lib/<domain>`** (the four-file shape is its module boundary); dependencies point
+  **inward** — UI → DAL → domain, and the domain imports nothing framework/IO. New
+  concepts get their own context rather than bolting onto an existing one.
 - Commit/push only when asked.
 - **Update the docs as part of every feature.** After building or changing
   functionality, update this `CLAUDE.md` (and any other affected docs) in the same
   pass so the architecture, data model, and "what's built vs planned" notes stay
-  accurate. This keeps context clears cheap — the next session can pick up from the
-  docs alone.
+  accurate. Slot any new doc into the **C4 altitude** it belongs to (context /
+  container-as-bounded-context / component / code+schema — see the Patterns note). This
+  keeps context clears cheap — the next session can pick up from the docs alone.
