@@ -143,5 +143,7 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
 
 ## Tidy-ups (do when nearby)
 
-- **Shared form primitives.** `MoneyInput`, `PercentInput`, `Field`, `Select`,
-  `DateInput` are copy-pasted per editor. Extract a shared module.
+- **Shared form primitives — ✅ done.** Extracted to
+  `src/components/forms/primitives.tsx` (`Field`, `MoneyInput`, `NumberInput`,
+  `PercentInput`, `Select`, `DateInput`); the bucket/investments/spending editors now
+  import them instead of each carrying a copy.

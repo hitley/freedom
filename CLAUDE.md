@@ -333,9 +333,12 @@ persistence will error until `.env.local` is populated and migrations are run.
 - **Tailwind exposes only the base palette** (`emerald`, `gold`, `muted`, `surface`,
   `surface-2`, `border`, `foreground` — see `@theme inline` in `globals.css`). There
   is **no** `-dim` utility; shade with opacity (`bg-emerald/50`), not `bg-emerald-dim`.
-- **Shared form primitives** (`MoneyInput`, `PercentInput`, `Field`, `Select`,
-  `DateInput`) are currently copy-pasted per editor — match the existing copy; a
-  shared module is a future tidy-up.
+- **Shared form primitives** live in `src/components/forms/primitives.tsx`
+  (`Field`, `MoneyInput`, `NumberInput`, `PercentInput`, `Select`, `DateInput`) —
+  import them into editor modals rather than re-defining; they're pure presentational
+  field controls. Domain-specific sub-forms (toggles, cashflow/history rows) stay in
+  their editor. A handful of bespoke inline `<input type="date">` fields (full-width,
+  `rounded-xl`) remain inline by design where the compact `DateInput` doesn't fit.
 - **Previewing locally:** the app's dev server runs on **port 3100** (the launch
   config `freedom-dev` in `.claude/launch.json` pins it, so it never collides with
   other repos on 3000). The Investments/Buckets views only mount **after** the vision
