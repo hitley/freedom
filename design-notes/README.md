@@ -29,3 +29,4 @@ forward-looking bits into `ROADMAP.md`. The note stays as the historical record 
 
 - [001 — Async ingestion inbox & bookkeeper pipeline](001-ingestion-inbox-bookkeeper.md)
 - [002 — BDD behavioural specs & living user documentation](002-bdd-testing-and-living-docs.md)
+- [003 — Recurring expenses, the monthly budget & bill reconciliation](003-recurring-expenses-and-budget-reconciliation.md)

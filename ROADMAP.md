@@ -15,6 +15,16 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
     summed across holdings, reusing recorded `history` + `simulate`).
   - **Sort / group** holdings (by kind, value, growth).
   - An **income view** — contributions in vs dividends (cash vs reinvested) per year.
+- **Recurring expenses, the monthly budget & bill reconciliation.** Make the Spending
+  tab more than a daily ledger: model the *expected* side (monthly direct debits,
+  quarterly/annual ad-hoc bills like car servicing) as a new `RecurringExpense` in the
+  `spending` domain — a bottom-up budget that normalises to "per month" and feeds the
+  vision target more stably than today's noisy window extrapolation. Then **reconcile**
+  real bills (dropped into the inbox) against what was expected: suggest-and-confirm
+  matching, variance, due/overdue, and estimate refinement over time. The "drop bills
+  into the inbox" half is 001's deferred LLM Extract for non-CSV sources (single
+  artifact → single transaction) + blob storage. Full design, data model, and build
+  order in `design-notes/003-recurring-expenses-and-budget-reconciliation.md`.
 - **Feed investments into the projection engine.** Today the investments domain is
   deliberately independent of `src/lib/finance`. Wire portfolio totals into the
   engine's `currentInvested` so the freedom-date trajectory reflects real holdings.
