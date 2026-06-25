@@ -311,6 +311,11 @@ export default function FreedomApp({
 }: FreedomAppProps) {
   const [vision, setVision] = useState<FreedomVision | null>(initialVision);
   const [editing, setEditing] = useState(false);
+  // The vision is a dismissible modal, not page furniture. It opens on every first
+  // load — the editable flow when no vision is set yet, otherwise the read-only card
+  // — and is reachable thereafter via the "Vision" menu option. Click-off (or
+  // completing the flow) closes it.
+  const [visionOpen, setVisionOpen] = useState(true);
   const [inputs, setInputs] = useState<FinancialInputs>(initialInputs ?? DEFAULT_INPUTS);
   const [view, setView] = useState<FinancialView>("trajectory");
   const [buckets, setBuckets] = useState<BucketsState>(initialBuckets ?? SEED_BUCKETS);
@@ -376,6 +381,7 @@ export default function FreedomApp({
           : prev.ongoingAnnualIncome,
     }));
     setEditing(false);
+    setVisionOpen(false);
     // Persist the captured vision immediately (not debounced — it's a deliberate
     // commit, and `inputs` is saved separately by its own debounced effect).
     setSaveState("saving");
@@ -384,6 +390,19 @@ export default function FreedomApp({
       .catch(() => setSaveState("idle"));
   };
 
+  // Open the vision modal to view it (read-only first when one exists); close it
+  // and drop any in-progress edit on dismiss.
+  const openVision = () => {
+    setEditing(false);
+    setVisionOpen(true);
+  };
+  const closeVision = () => {
+    setVisionOpen(false);
+    setEditing(false);
+  };
+
+  // Inside the modal: the capture/edit flow when there's no vision yet or the user
+  // chose to edit; otherwise the read-only card.
   const showFlow = vision === null || editing;
 
   return (
@@ -438,67 +457,90 @@ export default function FreedomApp({
         </div>
       </header>
 
-      {showFlow ? (
-        <VisionOnboarding
-          initial={vision ?? undefined}
-          onComplete={completeVision}
-          onCancel={vision ? () => setEditing(false) : undefined}
+      <div className="mb-8 inline-flex gap-1 rounded-full border border-border bg-surface p-1">
+        {/* Vision opens the modal rather than switching the inline view, so it never
+            takes an active state. */}
+        <button
+          type="button"
+          onClick={openVision}
+          className="rounded-full px-4 py-1.5 text-sm text-muted transition-colors hover:text-foreground"
+        >
+          Vision
+        </button>
+        {(
+          [
+            { id: "trajectory", label: "Trajectory" },
+            { id: "buckets", label: "Buckets" },
+            { id: "investments", label: "Investments" },
+            { id: "spending", label: "Spending" },
+            { id: "inbox", label: "Inbox" },
+          ] as const
+        ).map((v) => (
+          <button
+            key={v.id}
+            type="button"
+            onClick={() => setView(v.id)}
+            className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+              view === v.id
+                ? "bg-surface-2 text-foreground"
+                : "text-muted hover:text-foreground"
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
+
+      {view === "trajectory" ? (
+        <FinancialDashboard inputs={inputs} proj={proj} onChange={onChange} />
+      ) : view === "buckets" ? (
+        <BucketsPanel state={buckets} onChange={setBuckets} />
+      ) : view === "investments" ? (
+        <InvestmentsPanel state={investments} onChange={setInvestments} />
+      ) : view === "spending" ? (
+        <SpendingPanel
+          state={spending}
+          onChange={setSpending}
+          targetAnnualSpend={inputs.annualSpend}
         />
       ) : (
-        <>
-          <VisionPanel
-            vision={vision}
-            freedomAge={proj.freedomAge}
-            onEdit={() => setEditing(true)}
-          />
+        <InboxPanel
+          items={inbox}
+          onAdd={addInboxItem}
+          onDismiss={dismissInboxItem}
+          onProcess={processInboxItem}
+          onReconcile={reconcileInboxItem}
+        />
+      )}
 
-          <div className="mb-8 inline-flex gap-1 rounded-full border border-border bg-surface p-1">
-            {(
-              [
-                { id: "trajectory", label: "Trajectory" },
-                { id: "buckets", label: "Buckets" },
-                { id: "investments", label: "Investments" },
-                { id: "spending", label: "Spending" },
-                { id: "inbox", label: "Inbox" },
-              ] as const
-            ).map((v) => (
-              <button
-                key={v.id}
-                type="button"
-                onClick={() => setView(v.id)}
-                className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
-                  view === v.id
-                    ? "bg-surface-2 text-foreground"
-                    : "text-muted hover:text-foreground"
-                }`}
-              >
-                {v.label}
-              </button>
-            ))}
+      {visionOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-background/70 p-0 backdrop-blur-sm sm:items-center sm:p-6"
+          onClick={closeVision}
+        >
+          <div
+            className="max-h-[92vh] w-full max-w-2xl overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {showFlow ? (
+              <div className="rounded-t-2xl border border-border bg-surface p-6 sm:rounded-2xl sm:p-8">
+                <VisionOnboarding
+                  initial={vision ?? undefined}
+                  onComplete={completeVision}
+                  onCancel={vision ? () => setEditing(false) : closeVision}
+                />
+              </div>
+            ) : (
+              vision && (
+                <VisionPanel
+                  vision={vision}
+                  freedomAge={proj.freedomAge}
+                  onEdit={() => setEditing(true)}
+                />
+              )
+            )}
           </div>
-
-          {view === "trajectory" ? (
-            <FinancialDashboard inputs={inputs} proj={proj} onChange={onChange} />
-          ) : view === "buckets" ? (
-            <BucketsPanel state={buckets} onChange={setBuckets} />
-          ) : view === "investments" ? (
-            <InvestmentsPanel state={investments} onChange={setInvestments} />
-          ) : view === "spending" ? (
-            <SpendingPanel
-              state={spending}
-              onChange={setSpending}
-              targetAnnualSpend={inputs.annualSpend}
-            />
-          ) : (
-            <InboxPanel
-              items={inbox}
-              onAdd={addInboxItem}
-              onDismiss={dismissInboxItem}
-              onProcess={processInboxItem}
-              onReconcile={reconcileInboxItem}
-            />
-          )}
-        </>
+        </div>
       )}
     </div>
   );

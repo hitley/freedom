@@ -171,9 +171,16 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   falls back to `DEFAULT_INPUTS` / onboarding / the illustrative seeds. The home page is
   **auth-gated** (`page.tsx` redirects to `/signin` without a session;
   `src/app/signin/page.tsx` is the Google sign-in; a sign-out form sits in the header).
-  It shows the guided `onboarding/VisionOnboarding` flow first, then `VisionPanel`
-  (editable, re-opens the flow) above a **Trajectory | Buckets | Investments | Spending |
-  Inbox** toggle: `FinancialDashboard` (controlled `inputs`/`proj`; the captured goal seeds its
+  The **vision is a dismissible modal, not page furniture** (it was eating the top of
+  the page): `FreedomApp` holds a `visionOpen` flag that **opens on every first load**
+  and is reachable thereafter via a **Vision** option that sits as the first item in the
+  view toggle (it triggers the modal rather than switching the inline view, so it never
+  takes an active state). The modal uses the same overlay chrome as the editors (click-off
+  anywhere to dismiss); it shows the read-only `VisionPanel` when a vision exists (its
+  Edit button re-enters the flow), or the guided `onboarding/VisionOnboarding` flow
+  directly when none is set yet. Completing the flow saves and closes it. The
+  **Vision | Trajectory | Buckets | Investments | Spending |
+  Inbox** toggle drives: `FinancialDashboard` (controlled `inputs`/`proj`; the captured goal seeds its
   annual spend), `buckets/BucketsPanel`, `investments/InvestmentsPanel` (portfolio value +
   by-kind breakdown + 1-year look-ahead, with `investments/HoldingEditor` as the
   add/edit modal — which also captures the per-holding `history`). Clicking a holding
