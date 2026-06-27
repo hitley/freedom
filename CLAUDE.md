@@ -111,8 +111,12 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   asOf)` pairs each expected occurrence with the **actual that settled it** — matched by a
   *confirmed* `transaction.recurring` link (`{ expenseId, dueDate }`, stamped on
   user-approval only), else `overdue` (past `asOf`) / `due` (upcoming) — plus the
-  **unmatched actuals** (spend with no commitment). Fuzzy suggest-a-match, the budget UI,
-  and bill ingestion are the next slices — full design in
+  **unmatched actuals** (spend with no commitment). `suggestMatches(expense, dueDate,
+  transactions)` proposes (never auto-applies) the actuals that could settle an occurrence —
+  unlinked spend within ±N days, inside a basis-dependent amount band (tight for `fixed`,
+  wide for `estimated`), same category *or* a `match.descriptions` narrative hit — ranked
+  best-fit-first as `MatchCandidate`s; the user confirms one to stamp the link. Bill
+  ingestion is the next slice — full design in
   `design-notes/003-recurring-expenses-and-budget-reconciliation.md`. This is also the
   **first piece of the async ingestion inbox / bookkeeper pipeline** (design
   in `design-notes/001-ingestion-inbox-bookkeeper.md`). The domain is **persisted and
@@ -235,10 +239,15 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   is its add/edit modal — payee, estimate, a `fixed`/`estimated` toggle, a friendly
   **cadence picker** (Weekly/Fortnightly/Monthly/Quarterly/Half-yearly/Yearly presets that
   map to the recurrence engine's `{ freq, interval }`, with a day-of-month or weekday
-  field), start date, and spend-only category chips. Below that the transaction list
-  (newest-first; click a row to edit); `spending/TransactionEditor` is its add/edit modal.
-  Manual entry today — imported statement rows will reconcile into the same list once the
-  ingestion inbox lands. The **Inbox** view (`inbox/InboxPanel`) is
+  field), start date, and spend-only category chips. A **Reconcile** button (when
+  commitments exist) opens `spending/ReconcileModal`: the expected occurrences over the
+  recent window (last 2 months → next), each a status chip (`matched` with a variance
+  chip / `outstanding` / `upcoming`); a matched row shows its actual + **Unlink**, an
+  unmatched row surfaces the top **suggested** actual ("Looks like … · Confirm") that
+  stamps `transaction.recurring` on confirm. Below that the transaction list (newest-first;
+  click a row to edit); `spending/TransactionEditor` is its add/edit modal. Manual entry
+  today — imported statement rows will reconcile into the same list once the ingestion
+  inbox lands. The **Inbox** view (`inbox/InboxPanel`) is
   the head of that pipeline: a capture card (source toggle, CSV upload **or** paste, or a
   free-text note) that queues a `pending` item, above the queue list with per-item status
   chips, a **Process** button on pending CSV items, and dismiss. Processing a CSV runs the

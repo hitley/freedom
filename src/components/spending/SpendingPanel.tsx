@@ -13,6 +13,7 @@ import {
   type SpendingState,
   type Transaction,
 } from "@/lib/spending";
+import ReconcileModal from "./ReconcileModal";
 import RecurringExpenseEditor from "./RecurringExpenseEditor";
 import TransactionEditor from "./TransactionEditor";
 
@@ -78,6 +79,7 @@ export default function SpendingPanel({
   const [editing, setEditing] = useState<Transaction | null>(null);
   // null = closed; a RecurringExpense = editing/adding it.
   const [editingExpense, setEditingExpense] = useState<RecurringExpense | null>(null);
+  const [reconciling, setReconciling] = useState(false);
 
   const summary = useMemo(() => summarise(state), [state]);
   const { window } = summary;
@@ -222,13 +224,24 @@ export default function SpendingPanel({
           <h2 className="font-display text-sm font-semibold uppercase tracking-wide text-muted">
             Planned
           </h2>
-          <button
-            type="button"
-            onClick={() => setEditingExpense(freshExpense())}
-            className="rounded-full border border-emerald/40 px-4 py-1.5 text-xs font-semibold text-emerald transition-colors hover:bg-emerald/10"
-          >
-            + Add expense
-          </button>
+          <div className="flex items-center gap-2">
+            {expenses.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setReconciling(true)}
+                className="rounded-full border border-border px-4 py-1.5 text-xs font-semibold text-muted transition-colors hover:text-foreground"
+              >
+                Reconcile
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setEditingExpense(freshExpense())}
+              className="rounded-full border border-emerald/40 px-4 py-1.5 text-xs font-semibold text-emerald transition-colors hover:bg-emerald/10"
+            >
+              + Add expense
+            </button>
+          </div>
         </div>
 
         {expenses.length === 0 ? (
@@ -416,6 +429,14 @@ export default function SpendingPanel({
           onSave={saveExpense}
           onDelete={deleteExpense}
           onCancel={() => setEditingExpense(null)}
+        />
+      )}
+
+      {reconciling && (
+        <ReconcileModal
+          state={state}
+          onChange={onChange}
+          onClose={() => setReconciling(false)}
         />
       )}
     </section>

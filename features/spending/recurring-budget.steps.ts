@@ -4,6 +4,8 @@ import {
   annualBudget,
   monthlyBudget,
   reconcileWindow,
+  suggestMatches,
+  type MatchCandidate,
   type RecurringExpense,
   type SpendingCategory,
   type ReconcileView,
@@ -44,6 +46,7 @@ describeFeature(feature, ({ Scenario }) => {
   let recurring: RecurringExpense[];
   let transactions: Transaction[];
   let view: ReconcileView;
+  let suggestions: MatchCandidate[];
 
   Scenario("Each commitment normalises to a monthly-equivalent cost", ({ Given, Then, And }) => {
     Given("the recurring expenses:", (_, rows: ExpenseRow[]) => {
@@ -124,6 +127,56 @@ describeFeature(feature, ({ Scenario }) => {
       expect(occ(view, date).status).toBe(status);
     });
     And("the occurrence on {string} is {string}", (_, date: string, status: string) => {
+      expect(occ(view, date).status).toBe(status);
+    });
+  });
+
+  Scenario("A fitting transaction is suggested, then confirmed into a match", ({ Given, And, When, Then }) => {
+    Given("a recurring {string} expense of {number} due monthly on day {number}", (_, payee: string, estimate: number, day: number) => {
+      recurring = [{
+        id: "exp-1",
+        payee,
+        category: "housing",
+        direction: "out",
+        estimate,
+        basis: "fixed",
+        active: true,
+        recurrence: { freq: "monthly", startDate: "2026-01-01", dayOfMonth: day },
+      }];
+      transactions = [];
+    });
+    And("a {string} transaction of {number} on {string} in {string}", (_, desc: string, amount: number, date: string, category: string) => {
+      transactions = [{
+        id: "tx-1",
+        date,
+        description: desc,
+        amount,
+        direction: "out",
+        category: category as SpendingCategory,
+        source: { kind: "manual" },
+      }];
+    });
+    When("I look for matches to the occurrence on {string}", (_, dueDate: string) => {
+      suggestions = suggestMatches(recurring[0], dueDate, transactions);
+    });
+    Then("the transaction {string} is suggested", (_, desc: string) => {
+      expect(suggestions.some((s) => s.transaction.description === desc)).toBe(true);
+    });
+    When("I confirm the suggested match", () => {
+      const top = suggestions[0].transaction;
+      transactions = transactions.map((t) =>
+        t.id === top.id
+          ? { ...t, recurring: { expenseId: recurring[0].id, dueDate: "2026-01-01" } }
+          : t,
+      );
+      view = reconcileWindow(
+        { transactions, recurring },
+        d("2026-01-01"),
+        d("2026-01-31"),
+        d("2026-01-15"),
+      );
+    });
+    Then("the occurrence on {string} is {string}", (_, date: string, status: string) => {
       expect(occ(view, date).status).toBe(status);
     });
   });

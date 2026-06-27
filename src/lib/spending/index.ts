@@ -6,6 +6,7 @@ import type {
   CategoryBudget,
   CategorySpend,
   DueOccurrence,
+  MatchCandidate,
   MonthSpend,
   ReconciledOccurrence,
   ReconcileView,
@@ -288,6 +289,63 @@ export function reconcileWindow(
   );
 
   return { occurrences: reconciled, unmatchedActuals };
+}
+
+/* ----------------------------------------------------------------------------
+ * Matching: suggest, never auto-apply. For an expected occurrence we propose the
+ * actual transactions that plausibly settled it — the user confirms one, stamping
+ * `transaction.recurring`. Same "agent mistakes are free" posture as the import
+ * pipeline. A candidate must be unspent-for, on or near the due date, within an
+ * amount band (tight for a `fixed` DD, wide for an `estimated` line), and either in
+ * the same category or hit one of the expense's narrative `match.descriptions`.
+ * ------------------------------------------------------------------------- */
+
+/** How wide the amount band is, as a fraction of the estimate, plus a small floor. */
+function amountBand(expense: RecurringExpense): number {
+  const frac = expense.basis === "fixed" ? 0.05 : 0.35;
+  return Math.max(expense.estimate * frac, 1);
+}
+
+/** True when a transaction's narrative hits one of the expense's description hints. */
+function descriptionHit(expense: RecurringExpense, tx: Transaction): boolean {
+  const hints = expense.match?.descriptions;
+  if (!hints || hints.length === 0) return false;
+  const desc = normaliseDescription(tx.description);
+  return hints.some((h) => desc.includes(normaliseDescription(h)));
+}
+
+/**
+ * Candidate actuals that could settle `expense`'s occurrence on `dueDate`, best fit
+ * first. Considers only unlinked spend within `withinDays` of the due date whose
+ * amount sits inside the basis-dependent band, and which either shares the category
+ * or matches a narrative hint. Pure — the caller supplies the transaction pool and
+ * decides what to show; nothing is stamped here.
+ */
+export function suggestMatches(
+  expense: RecurringExpense,
+  dueDate: string,
+  transactions: Transaction[],
+  opts?: { withinDays?: number },
+): MatchCandidate[] {
+  const withinDays = opts?.withinDays ?? 5;
+  const band = amountBand(expense);
+  const due = startOfDay(parseISO(dueDate)).getTime();
+  const out: MatchCandidate[] = [];
+
+  for (const tx of transactions) {
+    if (!isSpend(tx) || tx.recurring) continue;
+    const dayDelta = Math.round(
+      Math.abs(startOfDay(parseISO(tx.date)).getTime() - due) / MS_PER_DAY,
+    );
+    if (dayDelta > withinDays) continue;
+    const amountDelta = tx.amount - expense.estimate;
+    if (Math.abs(amountDelta) > band) continue;
+    if (tx.category !== expense.category && !descriptionHit(expense, tx)) continue;
+    // Closer in time and amount scores lower; amount weighted relative to estimate.
+    const score = dayDelta + (Math.abs(amountDelta) / Math.max(expense.estimate, 1)) * 10;
+    out.push({ transaction: tx, dayDelta, amountDelta, score });
+  }
+  return out.sort((a, b) => a.score - b.score);
 }
 
 /* ----------------------------------------------------------------------------

@@ -15,6 +15,7 @@ import {
   normaliseDescription,
   reconcileWindow,
   recurringExpenseSchema,
+  suggestMatches,
   spendByCategory,
   spendByMonth,
   spendingStateSchema,
@@ -405,6 +406,83 @@ describe("reconcileWindow", () => {
       new Date(2026, 0, 31),
     );
     expect(view.unmatchedActuals.map((t) => t.id)).toEqual(["gr"]);
+  });
+});
+
+describe("suggestMatches", () => {
+  const rent = expense({
+    id: "rent",
+    payee: "Rent",
+    category: "housing",
+    estimate: 1_350,
+    basis: "fixed",
+  });
+
+  it("suggests a near-date, near-amount, same-category spend", () => {
+    const txns = [
+      tx({ id: "hit", date: "2026-01-02", amount: 1_350, category: "housing" }),
+      tx({ id: "wrongcat", date: "2026-01-01", amount: 1_350, category: "groceries" }),
+      tx({ id: "fardate", date: "2026-01-20", amount: 1_350, category: "housing" }),
+      tx({ id: "in", date: "2026-01-01", amount: 1_350, category: "housing", direction: "in" }),
+    ];
+    const matches = suggestMatches(rent, "2026-01-01", txns);
+    expect(matches.map((m) => m.transaction.id)).toEqual(["hit"]);
+    expect(matches[0].dayDelta).toBe(1);
+    expect(matches[0].amountDelta).toBe(0);
+  });
+
+  it("rejects amounts outside the tight band for a fixed commitment", () => {
+    const txns = [tx({ id: "over", date: "2026-01-01", amount: 1_600, category: "housing" })];
+    expect(suggestMatches(rent, "2026-01-01", txns)).toHaveLength(0);
+  });
+
+  it("allows a wide amount swing for an estimated commitment", () => {
+    const energy = expense({
+      id: "energy",
+      category: "utilities",
+      estimate: 100,
+      basis: "estimated",
+    });
+    const txns = [tx({ id: "spiky", date: "2026-01-01", amount: 130, category: "utilities" })];
+    const matches = suggestMatches(energy, "2026-01-01", txns);
+    expect(matches.map((m) => m.transaction.id)).toEqual(["spiky"]);
+    expect(matches[0].amountDelta).toBe(30);
+  });
+
+  it("matches on a narrative hint even when the category differs", () => {
+    const gym = expense({
+      id: "gym",
+      category: "health",
+      estimate: 40,
+      basis: "fixed",
+      match: { descriptions: ["PureGym"] },
+    });
+    const txns = [tx({ id: "g", date: "2026-01-01", amount: 40, description: "PUREGYM LTD", category: "shopping" })];
+    expect(suggestMatches(gym, "2026-01-01", txns).map((m) => m.transaction.id)).toEqual(["g"]);
+  });
+
+  it("never suggests an already-linked transaction", () => {
+    const txns = [
+      tx({
+        id: "linked",
+        date: "2026-01-01",
+        amount: 1_350,
+        category: "housing",
+        recurring: { expenseId: "rent", dueDate: "2025-12-01" },
+      }),
+    ];
+    expect(suggestMatches(rent, "2026-01-01", txns)).toHaveLength(0);
+  });
+
+  it("ranks the closest fit first", () => {
+    const txns = [
+      tx({ id: "far", date: "2026-01-04", amount: 1_360, category: "housing" }),
+      tx({ id: "near", date: "2026-01-01", amount: 1_350, category: "housing" }),
+    ];
+    expect(suggestMatches(rent, "2026-01-01", txns).map((m) => m.transaction.id)).toEqual([
+      "near",
+      "far",
+    ]);
   });
 });
 

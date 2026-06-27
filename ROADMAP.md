@@ -29,8 +29,11 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   round-trips, no migration. **The budget UI (step 3) has landed too:** a **Planned**
   section in the Spending tab (monthly-budget headline vs the observed annualised figure,
   by-category bar, commitment list, "Coming up" due list) + a `RecurringExpenseEditor` with
-  a friendly cadence picker. **Next:** the reconcile view with fuzzy suggest-a-match (step
-  4), then bill ingestion (step 5). The "drop bills into the inbox" half is
+  a friendly cadence picker. **Reconciliation (step 4) has landed too:** `suggestMatches`
+  proposes the actuals that could settle each occurrence, and a `ReconcileModal` lets you
+  confirm a match (stamping `transaction.recurring`, with variance chips) or unlink.
+  **Next:** bill ingestion (step 5) — single-artifact LLM Extract + blob storage — then the
+  optional estimate-refinement (step 6) and feeding `annualBudget` into the vision/engine. The "drop bills into the inbox" half is
   001's deferred LLM Extract for non-CSV sources (single artifact → single transaction) +
   blob storage. Full design, data model, and build order in
   `design-notes/003-recurring-expenses-and-budget-reconciliation.md`.

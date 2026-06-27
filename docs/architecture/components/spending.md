@@ -26,6 +26,7 @@ This page is generated from the code: file descriptions come from each file's he
 
 | File | Responsibility |
 | --- | --- |
+| `ReconcileModal.tsx` | _—_ |
 | `RecurringExpenseEditor.tsx` | _—_ |
 | `SpendingPanel.tsx` | _—_ |
 | `TransactionEditor.tsx` | _—_ |
@@ -54,6 +55,7 @@ The data types this context owns (from `types.ts`).
 | `ReconcileStatus` | type | Where an expected occurrence stands against reality: - `matched` — an actual transaction has been reconciled to it; - `overdue` — its due date has passed (≤ `asOf`) with no matched actual; - `due`     — still upcoming (> `asOf`), not yet settled. |
 | `ReconciledOccurrence` | interface | An expected occurrence paired with the actual that settled it (if any). |
 | `ReconcileView` | interface | The reconciliation reading over a window: each expected occurrence with its matched actual (or overdue/due), plus **unmatched actuals** — real spend in the window with no commitment behind it. |
+| `MatchCandidate` | interface | A *suggested* (never auto-applied) actual transaction that could settle an expected occurrence — surfaced for the user to confirm. Ranked by `score` (lower = better fit); `dayDelta` / `amountDelta` explain the fit so the UI can show "2 days early, £3 over". |
 
 ## Behaviours
 

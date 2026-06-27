@@ -240,6 +240,21 @@ export interface ReconcileView {
 }
 
 /**
+ * A *suggested* (never auto-applied) actual transaction that could settle an expected
+ * occurrence — surfaced for the user to confirm. Ranked by `score` (lower = better fit);
+ * `dayDelta` / `amountDelta` explain the fit so the UI can show "2 days early, £3 over".
+ */
+export interface MatchCandidate {
+  transaction: Transaction;
+  /** Absolute whole-day gap between the actual's date and the expected due date. */
+  dayDelta: number;
+  /** `transaction.amount − estimate` (positive = paid more than expected). */
+  amountDelta: number;
+  /** Combined goodness-of-fit; smaller is a closer match. */
+  score: number;
+}
+
+/**
  * Human labels for categories, for selects and chips. `spend: true` means an `out`
  * transaction in this category counts toward spend totals; `income`/`transfer` are
  * false because they must never be counted as spend. First entry is the default for

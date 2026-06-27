@@ -40,3 +40,14 @@ Feature: A bottom-up budget from recurring expenses
     When I reconcile the window "2026-01-01" to "2026-02-28" as of "2026-02-15"
     Then the occurrence on "2026-01-01" is "overdue"
     And the occurrence on "2026-02-01" is "overdue"
+
+  Scenario: A fitting transaction is suggested, then confirmed into a match
+    A real payment that lands near an expected occurrence, in the same category and
+    within the amount band, is offered as a suggestion — never applied automatically.
+    Confirming it records the link, so the occurrence then reads as matched.
+    Given a recurring "Rent" expense of 1350.00 due monthly on day 1
+    And a "Rent paid" transaction of 1350.00 on "2026-01-02" in "housing"
+    When I look for matches to the occurrence on "2026-01-01"
+    Then the transaction "Rent paid" is suggested
+    When I confirm the suggested match
+    Then the occurrence on "2026-01-01" is "matched"
