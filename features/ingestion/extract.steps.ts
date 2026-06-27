@@ -50,7 +50,7 @@ describeFeature(feature, ({ Background, Scenario }) => {
   Background(({ Given }) => {
     Given("an empty spending ledger", () => {
       store.reset();
-      store.spending = { transactions: [] };
+      store.spending = { transactions: [], recurring: [] };
     });
   });
 
@@ -79,7 +79,7 @@ describeFeature(feature, ({ Background, Scenario }) => {
 
   Scenario("A row already in the ledger is recognised as a duplicate, not re-proposed", ({ Given, When, Then, And }) => {
     Given("the ledger already contains a {string} spend of {number} on {string}", (_, desc: string, amount: number, date: string) => {
-      store.spending = { transactions: [ledgerSpend(desc, amount, date)] };
+      store.spending = { transactions: [ledgerSpend(desc, amount, date)], recurring: [] };
     });
     And("a pending CSV inbox item {string} containing:", (_, id: string, csv: string) => {
       store.seedItem(captured(id, "csv", csv));

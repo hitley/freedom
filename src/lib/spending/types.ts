@@ -15,6 +15,8 @@
  * See `design-notes/001-ingestion-inbox-bookkeeper.md` for the pipeline this serves.
  */
 
+import type { Recurrence } from "@/lib/buckets";
+
 /** Which way money moved: `in` (a credit) or `out` (a debit/spend). */
 export type Direction = "in" | "out";
 
@@ -50,6 +52,19 @@ export type TransactionSource =
   | { kind: "manual" }
   | { kind: "import"; inboxItemId: string };
 
+/**
+ * A confirmed reconciliation link: this observed transaction is the actual that
+ * satisfied a specific expected occurrence of a {@link RecurringExpense}. The link
+ * lives on the transaction (not a separate store) so it's auditable and undoable,
+ * the same instinct as import provenance. Only stamped on user confirmation.
+ */
+export interface RecurringLink {
+  /** The {@link RecurringExpense} this transaction settled. */
+  expenseId: string;
+  /** The expected occurrence's date (`YYYY-MM-DD`) this actual was matched to. */
+  dueDate: string;
+}
+
 /** One observed movement of money — a single statement line or a manual entry. */
 export interface Transaction {
   id: string;
@@ -62,6 +77,8 @@ export interface Transaction {
   direction: Direction;
   category: SpendingCategory;
   source: TransactionSource;
+  /** Set once this actual is reconciled against an expected occurrence. */
+  recurring?: RecurringLink;
 }
 
 /**
@@ -71,9 +88,47 @@ export interface Transaction {
  */
 export type DraftTransaction = Omit<Transaction, "id" | "source">;
 
-/** The full client-side state: every transaction the user tracks. */
+/**
+ * A **recurring/expected expense** — the *intended* side of spending, the
+ * counterpart to the observed {@link Transaction} ledger. A commitment with a
+ * cadence and an estimate: monthly direct debits, quarterly water, the annual car
+ * service. Summed and normalised to "per month", these form a stable, bottom-up
+ * budget — a steadier feed to the vision's target spend than extrapolating a short
+ * window of observed transactions.
+ *
+ * Deliberately a different aggregate root from buckets' `Cashflow` (which funds a
+ * *purpose envelope*); this one forecasts *outgoings*. It reuses buckets' recurrence
+ * engine for scheduling but stays its own concept — see
+ * `design-notes/003-recurring-expenses-and-budget-reconciliation.md`.
+ */
+export interface RecurringExpense {
+  id: string;
+  /** Who's paid — "British Gas", "Audi servicing". */
+  payee: string;
+  category: SpendingCategory;
+  /** Room for recurring income later; today every commitment is money `out`. */
+  direction: "out";
+  /** Expected amount per occurrence, in GBP. */
+  estimate: number;
+  /**
+   * `fixed` is a known direct debit (matches actuals on a tight amount band);
+   * `estimated` is an averaged guess from prior usage (wants a wide band).
+   */
+  basis: "fixed" | "estimated";
+  /** When and how often it falls due — reused from buckets (`monthly-on-day`, annual, …). */
+  recurrence: Recurrence;
+  /** Narrative hints for auto-suggesting which actuals settle this commitment. */
+  match?: { descriptions?: string[] };
+  /** Inactive commitments are kept for history but excluded from the live budget. */
+  active: boolean;
+  notes?: string;
+}
+
+/** The full client-side state: observed transactions plus the expected-expense budget. */
 export interface SpendingState {
   transactions: Transaction[];
+  /** The bottom-up budget of expected/recurring expenses. */
+  recurring: RecurringExpense[];
 }
 
 /** Spend within one calendar month, for the by-month breakdown. */
@@ -127,6 +182,61 @@ export interface SpendingSummary {
   byMonth: MonthSpend[];
   /** The annualised-spend reading over the observed window. */
   window: SpendWindow;
+}
+
+/** Monthly-equivalent budget within one category, for the budget breakdown. */
+export interface CategoryBudget {
+  category: SpendingCategory;
+  /** Monthly-equivalent expected spend in this category, in GBP. */
+  amount: number;
+}
+
+/** The bottom-up budget rollup: the headline monthly/annual figures + breakdown. */
+export interface BudgetSummary {
+  /** Sum of every active commitment's monthly-equivalent estimate, in GBP. */
+  monthly: number;
+  /** `monthly × 12` — the stable, forward-looking annual budget, in GBP. */
+  annual: number;
+  /** Monthly-equivalent budget by category, descending by amount. */
+  byCategory: CategoryBudget[];
+}
+
+/** One expected occurrence of a recurring expense within a window. */
+export interface DueOccurrence {
+  expenseId: string;
+  payee: string;
+  category: SpendingCategory;
+  /** The date this occurrence falls due (`YYYY-MM-DD`). */
+  dueDate: string;
+  /** Expected amount for this occurrence, in GBP. */
+  estimate: number;
+}
+
+/**
+ * Where an expected occurrence stands against reality:
+ *  - `matched` — an actual transaction has been reconciled to it;
+ *  - `overdue` — its due date has passed (≤ `asOf`) with no matched actual;
+ *  - `due`     — still upcoming (> `asOf`), not yet settled.
+ */
+export type ReconcileStatus = "matched" | "overdue" | "due";
+
+/** An expected occurrence paired with the actual that settled it (if any). */
+export interface ReconciledOccurrence extends DueOccurrence {
+  status: ReconcileStatus;
+  /** The transaction reconciled to this occurrence, or null when unmatched. */
+  actual: Transaction | null;
+  /** `actual.amount − estimate` when matched, else null. Positive = over budget. */
+  variance: number | null;
+}
+
+/**
+ * The reconciliation reading over a window: each expected occurrence with its
+ * matched actual (or overdue/due), plus **unmatched actuals** — real spend in the
+ * window with no commitment behind it.
+ */
+export interface ReconcileView {
+  occurrences: ReconciledOccurrence[];
+  unmatchedActuals: Transaction[];
 }
 
 /**

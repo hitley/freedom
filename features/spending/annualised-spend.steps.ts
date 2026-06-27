@@ -67,7 +67,7 @@ describeFeature(feature, ({ Scenario }) => {
       transactions = rows.map(row);
     });
     Then("the total spend is {number}", (_, expected: number) => {
-      expect(summarise({ transactions }).totalOut).toBeCloseTo(expected, 2);
+      expect(summarise({ transactions, recurring: [] }).totalOut).toBeCloseTo(expected, 2);
     });
   });
 
@@ -76,10 +76,10 @@ describeFeature(feature, ({ Scenario }) => {
       transactions = rows.map(row);
     });
     Then("the total spend is {number}", (_, expected: number) => {
-      expect(summarise({ transactions }).totalOut).toBeCloseTo(expected, 2);
+      expect(summarise({ transactions, recurring: [] }).totalOut).toBeCloseTo(expected, 2);
     });
     And("the total income is {number}", (_, expected: number) => {
-      expect(summarise({ transactions }).totalIn).toBeCloseTo(expected, 2);
+      expect(summarise({ transactions, recurring: [] }).totalIn).toBeCloseTo(expected, 2);
     });
   });
 

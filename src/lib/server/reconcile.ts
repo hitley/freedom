@@ -31,7 +31,10 @@ export async function reconcileInboxItem(
 
   // Only a proposal can be reconciled; anything else is a no-op (return as-is).
   if (item.status !== "proposed") {
-    return { item, spending: (await loadSpending()) ?? { transactions: [] } };
+    return {
+      item,
+      spending: (await loadSpending()) ?? { transactions: [], recurring: [] },
+    };
   }
 
   const txns = z.array(transactionSchema).parse(approved) as Transaction[];
@@ -50,9 +53,13 @@ export async function reconcileInboxItem(
   }
 
   // Append the genuinely-new rows to the ledger (defensive dedupe vs current state).
-  const current = (await loadSpending())?.transactions ?? [];
-  const { fresh } = dedupe(current, txns);
-  const spending: SpendingState = { transactions: [...current, ...fresh] };
+  // Preserve the existing recurring-expense budget — only transactions change here.
+  const existing = (await loadSpending()) ?? { transactions: [], recurring: [] };
+  const { fresh } = dedupe(existing.transactions, txns);
+  const spending: SpendingState = {
+    ...existing,
+    transactions: [...existing.transactions, ...fresh],
+  };
   await saveSpending(spending);
 
   // Record exactly what was applied on the item, for provenance, then mark it applied.

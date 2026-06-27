@@ -48,12 +48,12 @@ describeFeature(feature, ({ Background, Scenario }) => {
   }
 
   const ledger = () => store.spending?.transactions ?? [];
-  const totalSpend = () => summarise({ transactions: ledger() }).totalOut;
+  const totalSpend = () => summarise({ transactions: ledger(), recurring: [] }).totalOut;
 
   Background(({ Given, And }) => {
     Given("an empty spending ledger", () => {
       store.reset();
-      store.spending = { transactions: [] };
+      store.spending = { transactions: [], recurring: [] };
       rejected = false;
     });
     And("a proposed inbox item {string} offering:", (_, id: string, rows: OfferRow[]) => {

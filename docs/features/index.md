@@ -9,4 +9,5 @@ What the app does, described as executable examples. Each page is generated from
 
 ## Spending
 
+- [A bottom-up budget from recurring expenses](/features/spending/recurring-budget)
 - [Reading a year of spend from observed transactions](/features/spending/annualised-spend)

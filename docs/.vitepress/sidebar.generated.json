@@ -18,6 +18,10 @@
     "collapsed": false,
     "items": [
       {
+        "text": "A bottom-up budget from recurring expenses",
+        "link": "/features/spending/recurring-budget"
+      },
+      {
         "text": "Reading a year of spend from observed transactions",
         "link": "/features/spending/annualised-spend"
       }

@@ -80,6 +80,7 @@ export default function SpendingPanel({
   const saveTransaction = (tx: Transaction) => {
     const exists = state.transactions.some((t) => t.id === tx.id);
     onChange({
+      ...state,
       transactions: exists
         ? state.transactions.map((t) => (t.id === tx.id ? tx : t))
         : [...state.transactions, tx],
@@ -88,7 +89,10 @@ export default function SpendingPanel({
   };
 
   const deleteTransaction = (id: string) => {
-    onChange({ transactions: state.transactions.filter((t) => t.id !== id) });
+    onChange({
+      ...state,
+      transactions: state.transactions.filter((t) => t.id !== id),
+    });
     setEditing(null);
   };
 

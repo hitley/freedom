@@ -99,7 +99,22 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   dedupe at the Propose stage via `dedupeKey` (`date|signedAmount|normalisedDescription`,
   id/provenance excluded so the same real transaction from two statements keys equal) and
   the `dedupe(existing, candidates)` splitter. `spendingStateSchema` is the zod boundary.
-  This is the **first piece of the async ingestion inbox / bookkeeper pipeline** (design
+  Alongside the *observed* ledger the domain now models the **expected** side: a
+  **`RecurringExpense`** (payee, category, GBP `estimate`, `basis` `fixed`/`estimated`, a
+  `Recurrence` reused from buckets, `active`) is one commitment in a **bottom-up budget**.
+  `monthlyEquivalent` normalises each commitment to a per-month figure (analytic and
+  bound-agnostic — 12÷interval monthly, 52÷interval weekly, a `once` is not part of the
+  steady budget); `monthlyBudget` / `annualBudget` / `budgetByCategory` / `budgetSummary`
+  roll up the **active** lines — the **stable** counterpart to the noisy `annualisedSpend`,
+  the better feed to the vision target. `dueOccurrences(recurring, from, to)` expands
+  commitments over a window (via the recurrence engine); `reconcileWindow(state, from, to,
+  asOf)` pairs each expected occurrence with the **actual that settled it** — matched by a
+  *confirmed* `transaction.recurring` link (`{ expenseId, dueDate }`, stamped on
+  user-approval only), else `overdue` (past `asOf`) / `due` (upcoming) — plus the
+  **unmatched actuals** (spend with no commitment). Fuzzy suggest-a-match, the budget UI,
+  and bill ingestion are the next slices — full design in
+  `design-notes/003-recurring-expenses-and-budget-reconciliation.md`. This is also the
+  **first piece of the async ingestion inbox / bookkeeper pipeline** (design
   in `design-notes/001-ingestion-inbox-bookkeeper.md`). The domain is **persisted and
   surfaced** via `spending/SpendingPanel` (annualised-spend headline vs the vision's target
   spend, a by-category breakdown, and the transaction list) with `spending/TransactionEditor`

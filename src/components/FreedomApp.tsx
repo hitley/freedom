@@ -201,6 +201,13 @@ const SEED_SPENDING: SpendingState = {
     { id: "sp-subs-jun", date: "2026-06-12", description: "Netflix", amount: 12.99, direction: "out", category: "subscriptions", source: { kind: "manual" } },
     { id: "sp-shopping-jun", date: "2026-06-18", description: "Uniqlo", amount: 64, direction: "out", category: "shopping", source: { kind: "manual" } },
   ],
+  recurring: [
+    { id: "re-rent", payee: "Rent", category: "housing", direction: "out", estimate: 1_350, basis: "fixed", active: true, recurrence: { freq: "monthly", startDate: "2026-01-01", dayOfMonth: 1 } },
+    { id: "re-energy", payee: "Octopus Energy", category: "utilities", direction: "out", estimate: 128, basis: "estimated", active: true, recurrence: { freq: "monthly", startDate: "2026-01-15", dayOfMonth: 15 } },
+    { id: "re-netflix", payee: "Netflix", category: "subscriptions", direction: "out", estimate: 12.99, basis: "fixed", active: true, recurrence: { freq: "monthly", startDate: "2026-01-12", dayOfMonth: 12 } },
+    { id: "re-water", payee: "Thames Water", category: "utilities", direction: "out", estimate: 165, basis: "fixed", active: true, recurrence: { freq: "monthly", startDate: "2026-02-05", dayOfMonth: 5, interval: 3 } },
+    { id: "re-carservice", payee: "Audi servicing", category: "transport", direction: "out", estimate: 420, basis: "estimated", active: true, recurrence: { freq: "monthly", startDate: "2026-09-01", dayOfMonth: 1, interval: 12 } },
+  ],
 };
 
 type FinancialView =

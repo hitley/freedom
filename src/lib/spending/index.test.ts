@@ -1,16 +1,25 @@
 import { describe, expect, it } from "vitest";
 import {
+  annualBudget,
   annualisedSpend,
+  budgetByCategory,
+  budgetSummary,
   dedupe,
   dedupeKey,
+  dueOccurrences,
   isIncome,
   isSpend,
+  monthlyBudget,
+  monthlyEquivalent,
   normaliseDescription,
+  reconcileWindow,
+  recurringExpenseSchema,
   spendByCategory,
   spendByMonth,
   spendingStateSchema,
   spendWindow,
   summarise,
+  type RecurringExpense,
   type SpendingState,
   type Transaction,
 } from "./index";
@@ -47,6 +56,7 @@ const transferOut = tx({
 
 const state: SpendingState = {
   transactions: [groceries, dining, salary, transferOut],
+  recurring: [],
 };
 
 describe("isSpend / isIncome", () => {
@@ -178,5 +188,192 @@ describe("spendingStateSchema", () => {
   it("rejects an import source missing its inboxItemId", () => {
     const bad = { ...groceries, source: { kind: "import" } };
     expect(() => spendingStateSchema.parse({ transactions: [bad] })).toThrow();
+  });
+
+  it("defaults `recurring` to empty for documents stored before it existed", () => {
+    const parsed = spendingStateSchema.parse({ transactions: [groceries] });
+    expect(parsed.recurring).toEqual([]);
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+
+/** Terse builder for a recurring expense. */
+function expense(
+  partial: Partial<RecurringExpense> & Pick<RecurringExpense, "id">,
+): RecurringExpense {
+  return {
+    payee: "Bill",
+    category: "utilities",
+    direction: "out",
+    estimate: 100,
+    basis: "fixed",
+    active: true,
+    recurrence: { freq: "monthly", startDate: "2026-01-01", dayOfMonth: 1 },
+    ...partial,
+  };
+}
+
+describe("monthlyEquivalent", () => {
+  it("is the estimate itself for a plain monthly commitment", () => {
+    expect(monthlyEquivalent(expense({ id: "m", estimate: 120 }))).toBeCloseTo(120, 6);
+  });
+
+  it("divides an annual commitment across twelve months", () => {
+    const annual = expense({
+      id: "a",
+      estimate: 420,
+      recurrence: { freq: "monthly", startDate: "2026-01-01", dayOfMonth: 1, interval: 12 },
+    });
+    expect(monthlyEquivalent(annual)).toBeCloseTo(35, 6);
+  });
+
+  it("treats a quarterly commitment as a third of its estimate per month", () => {
+    const quarterly = expense({
+      id: "q",
+      estimate: 165,
+      recurrence: { freq: "monthly", startDate: "2026-01-01", dayOfMonth: 1, interval: 3 },
+    });
+    expect(monthlyEquivalent(quarterly)).toBeCloseTo(55, 6);
+  });
+
+  it("scales a weekly commitment by 52/12", () => {
+    const weekly = expense({
+      id: "w",
+      estimate: 30,
+      recurrence: { freq: "weekly", startDate: "2026-01-05", weekday: 1 },
+    });
+    expect(monthlyEquivalent(weekly)).toBeCloseTo((30 * 52) / 12, 6);
+  });
+
+  it("counts a true one-off as nothing in the steady budget", () => {
+    const once = expense({
+      id: "o",
+      recurrence: { freq: "once", startDate: "2026-03-01" },
+    });
+    expect(monthlyEquivalent(once)).toBe(0);
+  });
+});
+
+describe("budget rollups", () => {
+  const recurring = [
+    expense({ id: "rent", category: "housing", estimate: 1_350 }),
+    expense({ id: "water", category: "utilities", estimate: 165, recurrence: { freq: "monthly", startDate: "2026-01-01", dayOfMonth: 1, interval: 3 } }),
+    expense({ id: "carservice", category: "transport", estimate: 420, recurrence: { freq: "monthly", startDate: "2026-09-01", dayOfMonth: 1, interval: 12 } }),
+    expense({ id: "old", category: "subscriptions", estimate: 99, active: false }),
+  ];
+
+  it("sums only active commitments into the monthly budget", () => {
+    // 1350 + 55 + 35 = 1440; the inactive 99 is excluded.
+    expect(monthlyBudget(recurring)).toBeCloseTo(1_440, 6);
+  });
+
+  it("annualises the monthly budget", () => {
+    expect(annualBudget(recurring)).toBeCloseTo(1_440 * 12, 6);
+  });
+
+  it("groups the budget by category, descending", () => {
+    const byCat = budgetByCategory(recurring);
+    expect(byCat[0]).toEqual({ category: "housing", amount: 1_350 });
+    expect(byCat.find((c) => c.category === "utilities")?.amount).toBeCloseTo(55, 6);
+    expect(byCat.find((c) => c.category === "transport")?.amount).toBeCloseTo(35, 6);
+  });
+
+  it("rolls everything into a budget summary", () => {
+    const s = budgetSummary(recurring);
+    expect(s.monthly).toBeCloseTo(1_440, 6);
+    expect(s.annual).toBeCloseTo(1_440 * 12, 6);
+    expect(s.byCategory).toHaveLength(3);
+  });
+});
+
+describe("dueOccurrences", () => {
+  it("expands commitments across a window, sorted by date, honouring cadence", () => {
+    const recurring = [
+      expense({ id: "rent", payee: "Rent", estimate: 1_350, recurrence: { freq: "monthly", startDate: "2026-01-01", dayOfMonth: 1 } }),
+      expense({ id: "qtr", payee: "Water", estimate: 165, recurrence: { freq: "monthly", startDate: "2026-01-15", dayOfMonth: 15, interval: 3 } }),
+    ];
+    const due = dueOccurrences(recurring, new Date(2026, 0, 1), new Date(2026, 2, 31));
+    // Rent on 1 Jan/Feb/Mar (3), water on 15 Jan only within Q (next is 15 Apr).
+    expect(due.map((d) => d.dueDate)).toEqual([
+      "2026-01-01",
+      "2026-01-15",
+      "2026-02-01",
+      "2026-03-01",
+    ]);
+  });
+
+  it("includes an occurrence landing exactly on the window's lower bound", () => {
+    const recurring = [expense({ id: "rent", recurrence: { freq: "monthly", startDate: "2026-01-01", dayOfMonth: 1 } })];
+    const due = dueOccurrences(recurring, new Date(2026, 0, 1), new Date(2026, 0, 1));
+    expect(due).toHaveLength(1);
+    expect(due[0].dueDate).toBe("2026-01-01");
+  });
+
+  it("skips inactive commitments", () => {
+    const recurring = [expense({ id: "old", active: false })];
+    expect(dueOccurrences(recurring, new Date(2026, 0, 1), new Date(2026, 11, 31))).toEqual([]);
+  });
+});
+
+describe("reconcileWindow", () => {
+  const recurring = [
+    expense({ id: "rent", payee: "Rent", category: "housing", estimate: 1_350, recurrence: { freq: "monthly", startDate: "2026-01-01", dayOfMonth: 1 } }),
+  ];
+
+  it("matches a linked actual, reporting variance", () => {
+    const paid = tx({
+      id: "p",
+      date: "2026-01-01",
+      amount: 1_375,
+      category: "housing",
+      recurring: { expenseId: "rent", dueDate: "2026-01-01" },
+    });
+    const view = reconcileWindow(
+      { transactions: [paid], recurring },
+      new Date(2026, 0, 1),
+      new Date(2026, 0, 31),
+      new Date(2026, 0, 15),
+    );
+    expect(view.occurrences).toHaveLength(1);
+    expect(view.occurrences[0].status).toBe("matched");
+    expect(view.occurrences[0].variance).toBeCloseTo(25, 6);
+    expect(view.unmatchedActuals).toHaveLength(0);
+  });
+
+  it("flags a past unmatched occurrence as overdue and a future one as due", () => {
+    const view = reconcileWindow(
+      { transactions: [], recurring },
+      new Date(2026, 0, 1),
+      new Date(2026, 2, 31),
+      new Date(2026, 1, 15), // 15 Feb — Jan & Feb due dates have passed, Mar hasn't
+    );
+    const byDate = Object.fromEntries(view.occurrences.map((o) => [o.dueDate, o.status]));
+    expect(byDate["2026-01-01"]).toBe("overdue");
+    expect(byDate["2026-02-01"]).toBe("overdue");
+    expect(byDate["2026-03-01"]).toBe("due");
+    expect(view.occurrences.every((o) => o.variance === null)).toBe(true);
+  });
+
+  it("surfaces spend with no commitment as an unmatched actual", () => {
+    const groceriesTx = tx({ id: "gr", date: "2026-01-10", amount: 80, category: "groceries" });
+    const view = reconcileWindow(
+      { transactions: [groceriesTx], recurring: [] },
+      new Date(2026, 0, 1),
+      new Date(2026, 0, 31),
+      new Date(2026, 0, 31),
+    );
+    expect(view.unmatchedActuals.map((t) => t.id)).toEqual(["gr"]);
+  });
+});
+
+describe("recurringExpenseSchema", () => {
+  it("accepts a valid commitment", () => {
+    expect(() => recurringExpenseSchema.parse(expense({ id: "ok" }))).not.toThrow();
+  });
+
+  it("rejects a non-out direction and an empty payee", () => {
+    expect(() => recurringExpenseSchema.parse(expense({ id: "x", direction: "in" as never }))).toThrow();
+    expect(() => recurringExpenseSchema.parse(expense({ id: "y", payee: "" }))).toThrow();
   });
 });

@@ -1,8 +1,15 @@
 import { z } from "zod";
-import { parseISO, startOfDay } from "@/lib/buckets";
+import { occurrences, parseISO, recurrenceSchema, startOfDay, toISO } from "@/lib/buckets";
+import type { Recurrence } from "@/lib/buckets";
 import type {
+  BudgetSummary,
+  CategoryBudget,
   CategorySpend,
+  DueOccurrence,
   MonthSpend,
+  ReconciledOccurrence,
+  ReconcileView,
+  RecurringExpense,
   SpendingState,
   SpendingSummary,
   SpendWindow,
@@ -112,6 +119,156 @@ export function summarise(state: SpendingState): SpendingSummary {
 }
 
 /* ----------------------------------------------------------------------------
+ * The expected side: a bottom-up budget of recurring expenses. Each commitment
+ * normalises to a monthly-equivalent figure; summed, that's the stable "rough
+ * monthly spend" — a steadier feed to the vision target than extrapolating a short
+ * window of observed transactions. See design-notes/003.
+ * ------------------------------------------------------------------------- */
+
+/**
+ * How many times a recurrence fires in a representative year, at steady state.
+ * Deliberately analytic (12 ÷ interval for monthly, 52 ÷ interval for weekly) and
+ * **bound-agnostic** — a monthly DD is a monthly DD regardless of when it started or
+ * ends. A `once` expense is a genuine one-off, not part of the steady budget, so 0.
+ */
+function occurrencesPerYear(rec: Recurrence): number {
+  const interval = Math.max(1, rec.interval ?? 1);
+  switch (rec.freq) {
+    case "weekly":
+      return 52 / interval;
+    case "monthly":
+      return 12 / interval;
+    case "once":
+    default:
+      return 0;
+  }
+}
+
+/** A single commitment's monthly-equivalent cost: estimate × times-per-year ÷ 12. */
+export function monthlyEquivalent(expense: RecurringExpense): number {
+  return (expense.estimate * occurrencesPerYear(expense.recurrence)) / 12;
+}
+
+/** Active, money-out commitments — the lines that make up the live budget. */
+function activeBudgetLines(recurring: RecurringExpense[]): RecurringExpense[] {
+  return recurring.filter((e) => e.active && e.direction === "out");
+}
+
+/** Sum of every active commitment's monthly-equivalent estimate, in GBP. */
+export function monthlyBudget(recurring: RecurringExpense[]): number {
+  return activeBudgetLines(recurring).reduce(
+    (sum, e) => sum + monthlyEquivalent(e),
+    0,
+  );
+}
+
+/** The stable, forward-looking annual budget (`monthlyBudget × 12`), in GBP. */
+export function annualBudget(recurring: RecurringExpense[]): number {
+  return monthlyBudget(recurring) * 12;
+}
+
+/** Monthly-equivalent budget grouped by category, descending by amount. */
+export function budgetByCategory(recurring: RecurringExpense[]): CategoryBudget[] {
+  const byCat = new Map<RecurringExpense["category"], number>();
+  for (const e of activeBudgetLines(recurring)) {
+    byCat.set(e.category, (byCat.get(e.category) ?? 0) + monthlyEquivalent(e));
+  }
+  return [...byCat.entries()]
+    .map(([category, amount]) => ({ category, amount }))
+    .sort((a, b) => b.amount - a.amount);
+}
+
+/** The budget rollup: headline monthly/annual figures + the by-category breakdown. */
+export function budgetSummary(recurring: RecurringExpense[]): BudgetSummary {
+  const monthly = monthlyBudget(recurring);
+  return {
+    monthly,
+    annual: monthly * 12,
+    byCategory: budgetByCategory(recurring),
+  };
+}
+
+/**
+ * Every expected occurrence falling within `[from, to]`, sorted by date. Expands
+ * each active commitment's recurrence via the buckets engine (honouring its own
+ * start/end bounds), so this is the "due this month" / upcoming list. The window is
+ * inclusive of both ends — the engine treats its lower bound as exclusive, so we
+ * step back a day to include an occurrence landing exactly on `from`.
+ */
+export function dueOccurrences(
+  recurring: RecurringExpense[],
+  from: Date,
+  to: Date,
+): DueOccurrence[] {
+  const afterExclusive = new Date(startOfDay(from).getTime() - 1);
+  const until = startOfDay(to);
+  const out: DueOccurrence[] = [];
+  for (const e of activeBudgetLines(recurring)) {
+    for (const date of occurrences(e.recurrence, afterExclusive, until)) {
+      out.push({
+        expenseId: e.id,
+        payee: e.payee,
+        category: e.category,
+        dueDate: toISO(date),
+        estimate: e.estimate,
+      });
+    }
+  }
+  return out.sort((a, b) => (a.dueDate < b.dueDate ? -1 : a.dueDate > b.dueDate ? 1 : 0));
+}
+
+/**
+ * The reconciliation reading over `[from, to]`: every expected occurrence paired
+ * with the actual that settled it (via a confirmed `transaction.recurring` link),
+ * or marked `overdue`/`due` by its date against `asOf`. Also returns **unmatched
+ * actuals** — spend in the window with no commitment behind it (discretionary or a
+ * missed commitment). Matching here is by *confirmed link only* — fuzzy
+ * suggest-a-match is a later layer; this view trusts what the user has stamped.
+ */
+export function reconcileWindow(
+  state: SpendingState,
+  from: Date,
+  to: Date,
+  asOf: Date,
+): ReconcileView {
+  const asOfISO = toISO(startOfDay(asOf));
+  // Index linked actuals by "expenseId|dueDate" so each occurrence finds its match.
+  const linked = new Map<string, Transaction>();
+  for (const tx of state.transactions) {
+    if (tx.recurring) {
+      linked.set(`${tx.recurring.expenseId}|${tx.recurring.dueDate}`, tx);
+    }
+  }
+  const due = dueOccurrences(state.recurring, from, to);
+  const reconciled: ReconciledOccurrence[] = due.map((occ) => {
+    const actual = linked.get(`${occ.expenseId}|${occ.dueDate}`) ?? null;
+    const status: ReconciledOccurrence["status"] = actual
+      ? "matched"
+      : occ.dueDate <= asOfISO
+        ? "overdue"
+        : "due";
+    return {
+      ...occ,
+      status,
+      actual,
+      variance: actual ? actual.amount - occ.estimate : null,
+    };
+  });
+
+  const fromISO = toISO(startOfDay(from));
+  const toISODate = toISO(startOfDay(to));
+  const unmatchedActuals = state.transactions.filter(
+    (tx) =>
+      isSpend(tx) &&
+      !tx.recurring &&
+      tx.date >= fromISO &&
+      tx.date <= toISODate,
+  );
+
+  return { occurrences: reconciled, unmatchedActuals };
+}
+
+/* ----------------------------------------------------------------------------
  * Dedupe. Importing an overlapping statement must not double-count a transaction.
  * A stable key over date + signed amount + a normalised description lets the
  * Propose stage drop rows already present. Description is normalised (lower-cased,
@@ -180,20 +337,45 @@ export const transactionSourceSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("import"), inboxItemId: z.string().min(1) }),
 ]);
 
+const CATEGORY = z.enum(
+  SPENDING_CATEGORIES.map((c) => c.id) as [string, ...string[]],
+);
+
+export const recurringLinkSchema = z.object({
+  expenseId: z.string().min(1),
+  dueDate: ISO_DATE,
+});
+
 export const transactionSchema = z.object({
   id: z.string().min(1),
   date: ISO_DATE,
   description: z.string().trim().min(1).max(200),
   amount: MONEY,
   direction: z.enum(["in", "out"]),
-  category: z.enum(
-    SPENDING_CATEGORIES.map((c) => c.id) as [string, ...string[]],
-  ),
+  category: CATEGORY,
   source: transactionSourceSchema,
+  recurring: recurringLinkSchema.optional(),
+});
+
+export const recurringExpenseSchema = z.object({
+  id: z.string().min(1),
+  payee: z.string().trim().min(1).max(120),
+  category: CATEGORY,
+  direction: z.literal("out"),
+  estimate: MONEY,
+  basis: z.enum(["fixed", "estimated"]),
+  recurrence: recurrenceSchema,
+  match: z
+    .object({ descriptions: z.array(z.string().trim().min(1)).optional() })
+    .optional(),
+  active: z.boolean(),
+  notes: z.string().trim().max(500).optional(),
 });
 
 export const spendingStateSchema = z.object({
   transactions: z.array(transactionSchema),
+  // Older stored documents predate recurring expenses — default so they parse.
+  recurring: z.array(recurringExpenseSchema).default([]),
 });
 
 export type SpendingStateInput = z.input<typeof spendingStateSchema>;
