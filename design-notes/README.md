@@ -1,8 +1,8 @@
 # Design notes
 
 A running history of architecture & design conversations — the *thinking*, not the
-final state. This folder is **gitignored for now** (see `.gitignore`): it's a personal
-scratchpad of decisions and their rationale, not committed project docs.
+final state. These notes are **committed and tracked**: a shared decision log of choices
+and their rationale, complementing the committed project docs below.
 
 ## How this differs from the committed docs
 

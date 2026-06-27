@@ -37,11 +37,6 @@ yarn-error.log*
 # vercel
 .vercel
 
-# design notes — running history of architecture/design conversations; kept local for
-# now, but the convention (README) is shared
-/design-notes/*
-!/design-notes/README.md
-
 # playwright (e2e) — generated artifacts
 /test-results
 /playwright-report
