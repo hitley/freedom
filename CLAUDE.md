@@ -315,6 +315,10 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
 The app boots without the DB/auth env set, but any page that touches sign-in or
 persistence will error until `.env.local` is populated and migrations are run.
 
+**Deploying to Vercel?** See [`DEPLOYMENT.md`](DEPLOYMENT.md) — the production runbook
+(Neon prod DB + migrations, Vercel env vars, Google OAuth redirect, and the build-time
+`DATABASE_URL` gotcha).
+
 ## Commands
 
 - `npm run dev` — local app at http://localhost:3000.
