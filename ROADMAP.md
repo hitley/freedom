@@ -32,11 +32,16 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   a friendly cadence picker. **Reconciliation (step 4) has landed too:** `suggestMatches`
   proposes the actuals that could settle each occurrence, and a `ReconcileModal` lets you
   confirm a match (stamping `transaction.recurring`, with variance chips) or unlink.
-  **Next:** bill ingestion (step 5) — single-artifact LLM Extract + blob storage — then the
-  optional estimate-refinement (step 6) and feeding `annualBudget` into the vision/engine. The "drop bills into the inbox" half is
-  001's deferred LLM Extract for non-CSV sources (single artifact → single transaction) +
-  blob storage. Full design, data model, and build order in
-  `design-notes/003-recurring-expenses-and-budget-reconciliation.md`.
+  **Step 5 (bill ingestion) is designed but deliberately deferred** — recurring spending
+  stays **manual entry** for now and the feature is picked up later. The detailed plan is
+  written up (single-artifact LLM Extract behind the `InboxItem → candidate facts` seam, an
+  injectable `Extractor` interface, private Vercel Blob for PDFs/images, a tool-less
+  `record_bill` extraction on Sonnet 4.6 / Opus 4.8 — *not* Fable, so it runs under Zero Data
+  Retention — with strict zod output validation, MIME/size input caps, never-auto-apply, and
+  preserved import provenance). Full design incl. the security model and I/O validation in
+  `design-notes/003-recurring-expenses-and-budget-reconciliation.md` (**Step 5 — Bill
+  ingestion**). **After it:** optional estimate-refinement (step 6) and feeding
+  `annualBudget` into the vision/engine.
 - **Feed investments into the projection engine.** Today the investments domain is
   deliberately independent of `src/lib/finance`. Wire portfolio totals into the
   engine's `currentInvested` so the freedom-date trajectory reflects real holdings.
