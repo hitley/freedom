@@ -24,9 +24,10 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   matching, variance, due/overdue, and estimate refinement over time. **Step 1 (the pure
   model) has landed:** `RecurringExpense` + the budget helpers (`monthlyEquivalent` …
   `budgetSummary`), `dueOccurrences` / `reconcileWindow`, the `transaction.recurring`
-  confirmed-link, zod boundary, and tests/BDD spec. **Next:** persist (schema-only, no
-  migration), the Planned/budget UI + `RecurringExpenseEditor`, the reconcile view with
-  fuzzy suggest-a-match, then bill ingestion. The "drop bills into the inbox" half is
+  confirmed-link, zod boundary, and tests/BDD spec. **Persistence (step 2) came for free**
+  — `recurring` rides inside the existing `spending_state` jsonb document the DAL already
+  round-trips, no migration. **Next:** the Planned/budget UI + `RecurringExpenseEditor`,
+  the reconcile view with fuzzy suggest-a-match, then bill ingestion. The "drop bills into the inbox" half is
   001's deferred LLM Extract for non-CSV sources (single artifact → single transaction) +
   blob storage. Full design, data model, and build order in
   `design-notes/003-recurring-expenses-and-budget-reconciliation.md`.

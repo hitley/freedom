@@ -194,6 +194,30 @@ describe("spendingStateSchema", () => {
     const parsed = spendingStateSchema.parse({ transactions: [groceries] });
     expect(parsed.recurring).toEqual([]);
   });
+
+  it("round-trips the recurring budget through the persistence boundary", () => {
+    // The DAL parses through this schema on both read and write, so a populated
+    // budget must survive the trip back out unchanged (the whole jsonb document).
+    const withBudget: SpendingState = {
+      transactions: [groceries],
+      recurring: [
+        {
+          id: "rent",
+          payee: "Rent",
+          category: "housing",
+          direction: "out",
+          estimate: 1_350,
+          basis: "fixed",
+          active: true,
+          recurrence: { freq: "monthly", startDate: "2026-01-01", dayOfMonth: 1 },
+        },
+      ],
+    };
+    const out = spendingStateSchema.parse(
+      JSON.parse(JSON.stringify(withBudget)),
+    ) as SpendingState;
+    expect(out).toEqual(withBudget);
+  });
 });
 
 /* -------------------------------------------------------------------------- */
