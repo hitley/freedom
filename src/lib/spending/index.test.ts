@@ -3,6 +3,7 @@ import {
   annualBudget,
   annualisedSpend,
   budgetByCategory,
+  cadenceLabel,
   budgetSummary,
   dedupe,
   dedupeKey,
@@ -276,6 +277,22 @@ describe("monthlyEquivalent", () => {
       recurrence: { freq: "once", startDate: "2026-03-01" },
     });
     expect(monthlyEquivalent(once)).toBe(0);
+  });
+});
+
+describe("cadenceLabel", () => {
+  it("names the common cadences from freq + interval", () => {
+    const r = (freq: "once" | "weekly" | "monthly", interval?: number) =>
+      cadenceLabel({ freq, startDate: "2026-01-01", interval });
+    expect(r("monthly", 1)).toBe("Monthly");
+    expect(r("monthly", 3)).toBe("Quarterly");
+    expect(r("monthly", 6)).toBe("Half-yearly");
+    expect(r("monthly", 12)).toBe("Yearly");
+    expect(r("monthly", 5)).toBe("Every 5 months");
+    expect(r("weekly", 1)).toBe("Weekly");
+    expect(r("weekly", 2)).toBe("Fortnightly");
+    expect(r("weekly", 3)).toBe("Every 3 weeks");
+    expect(r("once")).toBe("One-off");
   });
 });
 

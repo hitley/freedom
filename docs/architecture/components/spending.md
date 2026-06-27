@@ -26,6 +26,7 @@ This page is generated from the code: file descriptions come from each file's he
 
 | File | Responsibility |
 | --- | --- |
+| `RecurringExpenseEditor.tsx` | _—_ |
 | `SpendingPanel.tsx` | _—_ |
 | `TransactionEditor.tsx` | _—_ |
 

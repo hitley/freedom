@@ -149,6 +149,28 @@ export function monthlyEquivalent(expense: RecurringExpense): number {
   return (expense.estimate * occurrencesPerYear(expense.recurrence)) / 12;
 }
 
+/**
+ * A short human label for how often a recurrence fires — "Monthly", "Quarterly",
+ * "Fortnightly", "Every 5 months" — for budget rows and the due list. Recognises the
+ * common interval shorthands (monthly×3 = quarterly, weekly×2 = fortnightly) and
+ * falls back to "Every N …" for the unusual ones.
+ */
+export function cadenceLabel(rec: Recurrence): string {
+  const interval = Math.max(1, rec.interval ?? 1);
+  if (rec.freq === "once") return "One-off";
+  if (rec.freq === "weekly") {
+    if (interval === 1) return "Weekly";
+    if (interval === 2) return "Fortnightly";
+    return `Every ${interval} weeks`;
+  }
+  // monthly
+  if (interval === 1) return "Monthly";
+  if (interval === 3) return "Quarterly";
+  if (interval === 6) return "Half-yearly";
+  if (interval === 12) return "Yearly";
+  return `Every ${interval} months`;
+}
+
 /** Active, money-out commitments — the lines that make up the live budget. */
 function activeBudgetLines(recurring: RecurringExpense[]): RecurringExpense[] {
   return recurring.filter((e) => e.active && e.direction === "out");

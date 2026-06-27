@@ -226,10 +226,19 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   per-bucket scheduled payments) / `AccountsEditor` are modals. Buckets are independent of
   the projection engine for now — feeding bucket totals into the engine is a future step. The
   **Spending** view (`spending/SpendingPanel`) leads with the **annualised-spend**
-  headline compared against the vision's target spend, a by-category breakdown bar, and
-  the transaction list (newest-first; click a row to edit); `spending/TransactionEditor`
-  is the add/edit modal. Manual entry today — imported statement rows will reconcile into
-  the same list once the ingestion inbox lands. The **Inbox** view (`inbox/InboxPanel`) is
+  headline compared against the vision's target spend, a by-category breakdown bar, then a
+  **Planned** section — the bottom-up budget of recurring expenses: a **monthly-budget**
+  headline (`budgetSummary`, shown beside the observed annualised figure for contrast), a
+  by-category budget bar, the commitment list (each row its cadence label + per-payment
+  estimate + monthly-equivalent; click to edit, paused ones dimmed), and a **Coming up**
+  list of the next due occurrences (`dueOccurrences`, ~3 months). `spending/RecurringExpenseEditor`
+  is its add/edit modal — payee, estimate, a `fixed`/`estimated` toggle, a friendly
+  **cadence picker** (Weekly/Fortnightly/Monthly/Quarterly/Half-yearly/Yearly presets that
+  map to the recurrence engine's `{ freq, interval }`, with a day-of-month or weekday
+  field), start date, and spend-only category chips. Below that the transaction list
+  (newest-first; click a row to edit); `spending/TransactionEditor` is its add/edit modal.
+  Manual entry today — imported statement rows will reconcile into the same list once the
+  ingestion inbox lands. The **Inbox** view (`inbox/InboxPanel`) is
   the head of that pipeline: a capture card (source toggle, CSV upload **or** paste, or a
   free-text note) that queues a `pending` item, above the queue list with per-item status
   chips, a **Process** button on pending CSV items, and dismiss. Processing a CSV runs the
