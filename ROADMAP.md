@@ -165,8 +165,44 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
 
 ## Later / bigger bets
 
-- **Dimensions 2 & 3** (e.g. Time, Health) — slots in the same
-  vision → current-state → trajectory framework, not yet built.
+### Dimensions 2 & 3 (Time & Health) — coming soon
+
+Both slot into the same **vision → current-state → trajectory** framework as the
+financial dimension; neither is built yet. Capturing ideas here so they're not lost.
+
+#### Health freedom (Dimension idea)
+
+The navigation breaks the dimension into three views, mirroring the financial split of
+*goal → reality → flow* but framed as an **energy balance** (calories in vs calories out):
+
+- **Vision** — set a **health goal** and *why* it matters. Not one-size-fits-all: could be
+  losing weight, getting fitter, mental fitness, sleep quality, or other aspects. (Same
+  shape as the financial vision: headline, why, motivations, a target.)
+- **Incoming energy** — everything that puts energy *in*: hydration, food, calories, food
+  tracking.
+- **Outgoing energy** — everything that expends energy *out*: steps, gym sessions, sleep
+  tracking, NEAT (non-exercise activity thermogenesis), and other calorie-burning activity.
+
+The **trajectory** would project the energy balance over time toward the chosen goal — the
+"freedom date" equivalent (e.g. a target-weight or fitness-milestone date). Open questions:
+where the data comes from (manual entry first, then a wearable / health-app feed behind a
+clean ingestion seam, mirroring the financial `PriceProvider` / Open-Banking pattern).
+
+#### Time freedom (Dimension idea)
+
+Same **vision → current-state → trajectory** framework, oriented around what to *do* with
+freed-up time:
+
+- **Vision** — picture what life looks like with **free time**: what you'd spend it on and
+  *why* it matters. (Same shape as the other visions: headline, why, motivations.)
+- **Hobbies & travel** — from the vision, start thinking about hobbies to pursue and places
+  to go. A **bucket checklist** of things to do/experience.
+- **Travel** — a list of **travel locations**, tracked into a **planner** (where, when,
+  status — wishlist → planned → done).
+
+The **trajectory** would track progress through the bucket list / travel planner over time.
+Open question: how this connects to the financial dimension (free time is partly bought —
+the freedom date enables the travel plan) and to Health (energy/capacity to do it).
 
 ## Tidy-ups (do when nearby)
 
