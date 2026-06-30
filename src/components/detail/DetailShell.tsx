@@ -1,7 +1,7 @@
 /**
  * The maximised **detail view** chrome: a glyph + title + subtitle header with
- * Edit and Minimise actions, wrapping whatever the domain wants to show (stats,
- * a {@link ProjectionChart}, what-if sliders, history…). Each domain renders its
+ * Edit and Minimise actions, wrapping whatever the View wants to show (stats,
+ * a {@link ProjectionChart}, what-if sliders, history…). Each View renders its
  * own body as `children`; this just gives every detail view the same frame and
  * the same way back to its overview.
  */

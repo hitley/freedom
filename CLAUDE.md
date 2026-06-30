@@ -7,11 +7,28 @@ dimension you (1) project your goals and *why* they matter, (2) capture your
 current state, then (3) track the trajectory and ETA to the goal. Visual and
 interactive by design — no boring spreadsheets.
 
-**Dimension 1 (in progress): Financial freedom.** First **capture the vision &
+**Domain 1 (in progress): Financial freedom.** First **capture the vision &
 goal** — what freedom looks like, *why* it matters, and the target spend (step 1).
 Then work out your "magic number" (what it takes to be financially free), capture
-current net worth, and see the projection and your **freedom date**. Dimensions 2
-and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
+current net worth, and see the projection and your **freedom date**. The Time and
+Health Domains are slots in the same framework, not yet built.
+
+## Taxonomy (the words this app uses — keep them straight)
+
+Three nested altitudes, mapped onto the [C4 model](https://c4model.com). **Use these
+consistently throughout code, tests, and docs:**
+
+| Altitude | Term | Is | Examples |
+|----------|------|----|----------|
+| **C2 · Container** | **Domain** | a dimension of personal freedom | Financial (built), Time, Health |
+| **C3 · Component** | **Component** — in code/React: **View** | a module within a Domain (one `src/lib/<x>` + its UI) | Vision, Trajectory, Investments, Buckets, Spending, Inbox |
+| **C4 · Code** | **Element** | a UI/code building block of a Component | a `*Panel`, a chart/timeline widget, a `*Editor`/`*Modal`, plus the `types`/`index`/server files |
+
+- **"Dimension"** = the outward/marketing synonym for **Domain** (e.g. the "Three dimensions of
+  mastery" tagline). Architecture and code say **Domain**.
+- **Component** (architecture) ≡ **View** (`.tsx`/React code — the `FinancialView` type). We say
+  "View" in React code to avoid colliding with "React component"; "Component" everywhere else.
+- An **Element** *is* a React component, but we call it an Element when talking architecture.
 
 > **Future work / ideas live in [`ROADMAP.md`](ROADMAP.md).** This file documents
 > what exists; the roadmap documents what's next and why. Check it when picking up
@@ -53,11 +70,11 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
 - **Engine** (`src/lib/finance/`): pure, dependency-light, framework-agnostic math
   (magic number, coast number, month-by-month projection). No I/O — unit-testable.
   Validation via zod at the trust boundary (`financialInputsSchema`).
-- **Vision domain** (`src/lib/vision/`): pure data for the vision & goal capture
+- **Vision component** (`src/lib/vision/`): pure data for the vision & goal capture
   phase — the `FreedomVision` type (headline, why, motivations, FIRE style, target
   spend/age), motivation + FIRE-style metadata, and the `freedomVisionSchema` zod
   boundary (ready for persistence; not stored yet).
-- **Buckets domain** (`src/lib/buckets/`): pure data + helpers for a virtual layer
+- **Buckets component** (`src/lib/buckets/`): pure data + helpers for a virtual layer
   of *purpose* over real accounts. You record each `Account`'s balance, then carve
   `Allocation` slices into purpose `Bucket`s; a bucket can draw from several
   accounts. Today-snapshot helpers (`bucketView`, `accountView`, `summarise`) derive
@@ -72,7 +89,7 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   the first date a bucket hits its target. `bucketsStateSchema` is the zod boundary
   (ready for persistence; not stored yet). Over-allocation is surfaced in the UI, not
   rejected at the schema.
-- **Investments domain** (`src/lib/investments/`): pure data + helpers for the
+- **Investments component** (`src/lib/investments/`): pure data + helpers for the
   freedom-generating assets the user holds — super, shares, ETFs. Each `Holding` is
   valued one of two ways: **`market`** (`units × pricePerUnit` — shares/ETFs, so worth
   moves with the market) or **`balance`** (a directly-entered value — super, cash). It
@@ -96,7 +113,7 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   by ticker to override). Investments are deliberately **independent of the projection
   engine** for now (feeding totals into `currentInvested` is a future step).
   `investmentsStateSchema` is the zod boundary (ready for persistence; not stored yet).
-- **Spending domain** (`src/lib/spending/`): pure data + helpers for the user's
+- **Spending component** (`src/lib/spending/`): pure data + helpers for the user's
   *observed* outgoings and income — the counterpart to buckets' *intended* `Cashflow`s.
   Each `Transaction` is a single statement line or manual entry: a positive `amount` plus
   a `direction` (`in`/`out`), a `category`, and a `source` (`manual` or an `import`
@@ -108,7 +125,7 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   dedupe at the Propose stage via `dedupeKey` (`date|signedAmount|normalisedDescription`,
   id/provenance excluded so the same real transaction from two statements keys equal) and
   the `dedupe(existing, candidates)` splitter. `spendingStateSchema` is the zod boundary.
-  Alongside the *observed* ledger the domain now models the **expected** side: a
+  Alongside the *observed* ledger the component now models the **expected** side: a
   **`RecurringExpense`** (payee, category, GBP `estimate`, `basis` `fixed`/`estimated`, a
   `Recurrence` reused from buckets, `active`) is one commitment in a **bottom-up budget**.
   `monthlyEquivalent` normalises each commitment to a per-month figure (analytic and
@@ -128,7 +145,7 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   ingestion is the next slice — full design in
   `design-notes/003-recurring-expenses-and-budget-reconciliation.md`. This is also the
   **first piece of the async ingestion inbox / bookkeeper pipeline** (design
-  in `design-notes/001-ingestion-inbox-bookkeeper.md`). The domain is **persisted and
+  in `design-notes/001-ingestion-inbox-bookkeeper.md`). The component is **persisted and
   surfaced** via `spending/SpendingPanel` (annualised-spend headline vs the vision's target
   spend, a by-category breakdown, and the transaction list) with `spending/TransactionEditor`
   as the add/edit modal. It also owns the **deterministic CSV parser** (`csv.ts`):
@@ -137,8 +154,8 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   formats into `DraftTransaction`s — pure and unit-tested (`csv.test.ts`); `ColumnMapping`
   is returned so a per-bank mapping step can override detection later. `proposedTransactions
   Schema` is the shape the Extract stage stores on an inbox item (deduped drafts + counts).
-- **Inbox domain** (`src/lib/inbox/`): the durable **queue at the head of the bookkeeper
-  pipeline** (Capture → Extract → Propose → Reconcile). Unlike the other domains (one jsonb
+- **Inbox component** (`src/lib/inbox/`): the durable **queue at the head of the bookkeeper
+  pipeline** (Capture → Extract → Propose → Reconcile). Unlike the other components (one jsonb
   document per instance), this is a **real table, one row per dropped artifact**
   (`inbox_item`), each with an independent `status` lifecycle (`pending` → `extracting` →
   `proposed` → `applied`, or `failed`/`dismissed`) processed asynchronously. An `InboxItem`
@@ -163,12 +180,12 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   `getDefaultInstance` (read-only; `null` if none), `getOrCreateDefaultInstance`
   (write-path only — lazily provisions the workspace on first save, so renders never
   mutate), and `requireInstance(id)` (ownership check for client-named instances).
-  `financial-profile.ts` was the first domain wired through it: `loadFinancialProfile`
+  `financial-profile.ts` was the first component wired through it: `loadFinancialProfile`
   / `saveFinancialProfile`, crossing the `financialInputsSchema` zod boundary in *and*
   out and upserting on the unique `instanceId`. The `vision`, `buckets`,
-  `investments`, and `spending` domains follow the same shape (`vision.ts` /
+  `investments`, and `spending` components follow the same shape (`vision.ts` /
   `buckets.ts` / `investments.ts` / `spending.ts`) but store a **single jsonb document**
-  per instance (validated through each domain's zod schema on read/write) instead of
+  per instance (validated through each component's zod schema on read/write) instead of
   typed columns — the data is a nested document the app reads/writes whole. `inbox.ts` is
   the exception in **shape** but not in discipline: it's a **multi-row** table, so it
   exposes `listInbox` / `addInboxItem` / `getInboxItem` / `setInboxStatus` rather than a
@@ -181,8 +198,8 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   subset belongs to the item, append to spending, mark `applied`. Thin `"use server"`
   actions in `src/app/actions.ts` delegate here; auth + validation live in the DAL, never
   the action.
-- **UI flow** (`src/components/`): `FreedomApp` orchestrates the financial
-  dimension. **All domains are persisted per-instance** — `page.tsx` loads `inputs` /
+- **UI flow** (`src/components/`): `FreedomApp` orchestrates the Financial
+  Domain. **All components are persisted per-instance** — `page.tsx` loads `inputs` /
   `vision` / `buckets` / `investments` / `spending` plus the `inbox` list server-side
   (`Promise.all` of the `load*`/`listInbox` DAL fns) and passes them as initial props;
   `FreedomApp` saves changes through the matching `save*Action` props. The inbox differs:
@@ -210,7 +227,7 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   **Vision | Trajectory | Investments | Buckets | Spending |
   Inbox** toggle drives: `FinancialDashboard` (controlled `inputs`/`proj`; the captured goal seeds its
   annual spend). The dashboard's **Reality** group no longer dials in "Invested today" /
-  "Saved per month" — those are **derived from the Investments domain** (portfolio
+  "Saved per month" — those are **derived from the Investments component** (portfolio
   `totalValue` and `annualContributions ÷ 12` via `summariseInvestments`, merged into
   `effectiveInputs` in `FreedomApp` so the projection tracks the real portfolio) and render
   read-only with a "From Investments →" link that switches to that view; only `currentAge`
@@ -225,7 +242,7 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
   interaction is a reusable shell** (`src/components/detail/`): `DetailShell` (the
   glyph/title/subtitle header + Edit/Minimise chrome), `ProjectionChart` (the generic
   past+projected SVG — today divider, gridlines, hover scrubber, optional horizontal
-  reference line, with a domain-supplied `tooltipLines(series, idx)` callback) plus its
+  reference line, with a View-supplied `tooltipLines(series, idx)` callback) plus its
   `HorizonSelector`, and `primitives` (`Stat`, `Slider`, `compactMoney`). `HoldingDetail`
   is built on it, and so is the buckets equivalent. The buckets view leads
   with `buckets/BucketsTimeline` (a
@@ -303,11 +320,11 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
 - Start with manual entry + CSV/statement upload. Keep ingestion behind a clean
   interface so Open Banking / Plaid automation can slot in later without touching
   the engine. (No live financial-system integrations yet.)
-- **Market prices** follow the same pattern: the investments domain reads quotes
+- **Market prices** follow the same pattern: the investments component reads quotes
   through the `PriceProvider` seam (`src/lib/investments`). The default
   `manualPriceProvider` returns nothing, so holdings value at their stored price; a
   live feed (broker/market-data API) implements the same interface later with no
-  change to the domain or UI value math.
+  change to the component or UI value math.
 
 ## Getting started (fresh clone)
 
@@ -356,7 +373,7 @@ persistence will error until `.env.local` is populated and migrations are run.
 
 ## Patterns (follow these — they save re-deriving from source)
 
-- **A finance domain = four files in the same shape** (see `buckets`, `investments`):
+- **A Component = four files in the same shape** (its Elements; see `buckets`, `investments`):
   `types.ts` (plain data, no imports beyond sibling types), `index.ts` (pure helpers +
   the `zod` boundary schema + `export *` of the types), then UI as a `*Panel`
   (summary + list, owns no state — parent passes `state` + `onChange`) and an
@@ -370,15 +387,15 @@ persistence will error until `.env.local` is populated and migrations are run.
   as `headerRight`), and `Slider` what-if levers. Cards become clickable
   (`role="button"` + `onClick` setting `detailId`); the card's Edit button
   `stopPropagation`s. Don't rebuild the SVG chart, scrubber, or `Stat`/`Slider`
-  per domain — `HoldingDetail` and `BucketDetail` are the worked examples.
-- **Test the pure domain, not the UI.** Each `src/lib/<domain>` gets an
-  `index.test.ts` next to it (Vitest, Node env, `@` alias works). The domains are
+  per Component — `HoldingDetail` and `BucketDetail` are the worked examples.
+- **Test the pure core, not the UI.** Each `src/lib/<component>` gets an
+  `index.test.ts` next to it (Vitest, Node env, `@` alias works). The Components' cores are
   designed I/O-free precisely so this is cheap — add cases when you add helpers.
 - **Behaviour & intent = a Gherkin spec, in two tiers** (design in
   `design-notes/002-bdd-testing-and-living-docs.md`; these `.feature` files are also the
   intended seed for generated VitePress `/docs`). Tier 1 lives in `features/<capability>/`:
   a `.feature` file (user-facing prose + Given/When/Then) + a `*.steps.ts` binding it via
-  `@amiceli/vitest-cucumber`, run by Vitest. Two shapes — **pure domain** (steps call the
+  `@amiceli/vitest-cucumber`, run by Vitest. Two shapes — **pure component** (steps call the
   helpers directly, no infra — `features/spending/`) and **server pipeline** (drives the
   real `extract.ts`/`reconcile.ts` with the DAL swapped for `features/support/dal-fake.ts`
   via `vi.mock`; `server-only` is aliased to a stub in `vitest.config.ts`). Tier 2 is
@@ -397,24 +414,26 @@ persistence will error until `.env.local` is populated and migrations are run.
   (`npm run docs:check` enforces this). Add a `@source` tag when a new spec covers a path,
   or the hook will flag that path as uncovered.
 - **Docs are organised by the C4 model, mapped onto the DDD structure** (the preferred
-  style — see https://c4model.com). Four altitudes, broadest first:
+  style — see https://c4model.com). Four altitudes, broadest first — and they match the
+  **Domain → Component → Element** taxonomy above:
   **C1 Context** — *why* the app exists and the external actors it talks to (the User/owner,
   Google as identity provider, Neon Postgres, future Open-Banking/market-data feeds);
-  **C2 Containers** — read here as the **bounded contexts / modules**, not deploy units:
-  each `src/lib/<domain>` (vision, buckets, investments, spending, inbox), the finance
-  **engine**, **auth/tenancy**, the **ingestion pipeline**, the **web app**, the **docs site**;
-  **C3 Components** — the parts inside a context (the four-file `types`/`index`/`*Panel`/`*Editor`,
-  the DAL, shared engines like the recurrence engine + the detail shell), each cross-linked to
-  the **behaviours** (`.feature` pages) that validate it via the existing `@source` map;
-  **C4 Code** — the model types and the **database schema** (`docs/architecture/data-model.md`).
+  **C2 Containers** — the **Domains**: Financial (built), Time, Health (slots). Cross-cutting
+  infrastructure (auth/tenancy, the web app, the docs site) sits beside them, not as a Domain;
+  **C3 Components** — the **modules of a Domain** (vision, finance/Trajectory, buckets,
+  investments, spending, inbox), each a `src/lib/<component>` + its UI (a **View** in code),
+  cross-linked to the **behaviours** (`.feature` pages) that validate it via the `@source` map;
+  **C4 Code** — a Component's **Elements**: the four-file `types`/`index`/`*Panel`/`*Editor`,
+  the DAL, shared engines (the recurrence engine + the detail shell), the model types, and the
+  **database schema** (`docs/architecture/data-model.md`).
   The Gherkin behaviours are the **dynamic** view; C4 is the **structural** view — keep them as
   two complementary axes rather than collapsing one into the other. **The C3/C4 pages are
   generated, not hand-written** (`scripts/arch-docs.mjs` + `generate-arch-docs.mjs`): C1/C2
   (`docs/architecture/index.md` + `containers.md`) are hand-authored with **Mermaid** C4
-  diagrams, but each C3 component page is built from the source — file *Responsibility* cells
-  come from each file's **header comment**, the *Model* table from the context's `types.ts`
-  doc-comments, and *Behaviours* from the `@source`→feature map. To document a new bounded
-  context, add it to the `CONTEXTS` manifest in `arch-docs.mjs`; to enrich an existing page,
+  diagrams, but each C3 Component page is built from the source — file *Responsibility* cells
+  come from each file's **header comment**, the *Model* table from the Component's `types.ts`
+  doc-comments, and *Behaviours* from the `@source`→feature map. To document a new Component,
+  add it to the `CONTEXTS` manifest in `arch-docs.mjs`; to enrich an existing page,
   **improve the code's header comments / type docs** (the generator rewards better names and
   comments — a file with no header shows `—`). `check-arch-docs.mjs` guards staleness. **Don't
   restate `.feature` files verbatim** — reference the behaviour, summarise the intent.
@@ -424,7 +443,7 @@ persistence will error until `.env.local` is populated and migrations are run.
 - **Shared form primitives** live in `src/components/forms/primitives.tsx`
   (`Field`, `MoneyInput`, `NumberInput`, `PercentInput`, `Select`, `DateInput`) —
   import them into editor modals rather than re-defining; they're pure presentational
-  field controls. Domain-specific sub-forms (toggles, cashflow/history rows) stay in
+  field controls. View-specific sub-forms (toggles, cashflow/history rows) stay in
   their editor. A handful of bespoke inline `<input type="date">` fields (full-width,
   `rounded-xl`) remain inline by design where the compact `DateInput` doesn't fit.
 - **Previewing locally:** the app's dev server runs on **port 3100** (the launch
@@ -435,14 +454,14 @@ persistence will error until `.env.local` is populated and migrations are run.
 ## Conventions
 
 - Pure engine logic in `src/lib/` (no React, no DB). UI in `src/app` + components.
-- **Keep the design modular and DDD-aligned.** One **bounded context per
-  `src/lib/<domain>`** (the four-file shape is its module boundary); dependencies point
-  **inward** — UI → DAL → domain, and the domain imports nothing framework/IO. New
-  concepts get their own context rather than bolting onto an existing one.
+- **Keep the design modular and DDD-aligned.** One **Component per
+  `src/lib/<component>`** (the four-file shape is its module boundary); dependencies point
+  **inward** — UI → DAL → Component core, and the core imports nothing framework/IO. New
+  concepts get their own Component rather than bolting onto an existing one.
 - Commit/push only when asked.
 - **Update the docs as part of every feature.** After building or changing
   functionality, update this `CLAUDE.md` (and any other affected docs) in the same
   pass so the architecture, data model, and "what's built vs planned" notes stay
-  accurate. Slot any new doc into the **C4 altitude** it belongs to (context /
-  container-as-bounded-context / component / code+schema — see the Patterns note). This
+  accurate. Slot any new doc into the **C4 altitude** it belongs to (C1 context /
+  C2 Domain / C3 Component / C4 Element+schema — see the Patterns note). This
   keeps context clears cheap — the next session can pick up from the docs alone.

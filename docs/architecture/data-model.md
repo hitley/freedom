@@ -1,8 +1,8 @@
 # C4 · Data model & schema
 
 > **C4 (code).** The persistence view of the model: the physical tables and how the
-> per-context [models](./components/) map onto them. For the logical model of each
-> context, see its [component page](./components/).
+> per-Component [models](./components/) map onto them. For the logical model of each
+> Component, see its [Component page](./components/).
 
 A map of every table, what hangs off what, and where each piece of data is read and
 written. Source of truth is [`src/db/schema.ts`](../../src/db/schema.ts); migrations live
@@ -143,7 +143,7 @@ zod boundary in and out.
 
 **Used where:** seeds the **Trajectory** view's projection (`project(inputs)` in
 `FreedomApp`). Note: `currentInvested` and `monthlyContribution` are still persisted but
-are now **overridden at render** by figures derived from the investments domain (portfolio
+are now **overridden at render** by figures derived from the investments Component (portfolio
 value + contributions ÷ 12) — see the Reality section note in `CLAUDE.md`.
 
 > ⚠️ **Security note:** monetary figures are stored as plain `numeric` for now.
@@ -156,7 +156,7 @@ value + contributions ÷ 12) — see the Reality section note in `CLAUDE.md`.
 
 Four tables, **identical shape**: `id`, `instance_id` (unique → `instance.id`, cascade),
 `data jsonb`, `updatedAt`. The `data` column is untyped in the schema; the DAL parses it
-through the domain's zod schema on **read and write**, so a malformed or stale row fails
+through the Component's zod schema on **read and write**, so a malformed or stale row fails
 loudly. Each has a matching DAL with a `load*` / `save*` pair that upserts on
 `instance_id`.
 
@@ -290,7 +290,7 @@ Migrations are committed under [`drizzle/`](../../drizzle) with a `meta/` snapsh
 
 - **No secrets or financial data in git.** `.env.local` is gitignored.
 - **Validate at the boundary with zod** — every JSONB document and typed-column write
-  crosses its domain schema on the way in *and* out.
+  crosses its Component schema on the way in *and* out.
 - **Parameterised queries only** (Drizzle) — never string-built SQL.
 - **Authorization centralised in the DAL** — resolve the instance from the session,
   never from a client-supplied id, so there's no IDOR surface.

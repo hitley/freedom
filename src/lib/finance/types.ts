@@ -1,5 +1,5 @@
 /**
- * Domain types for the financial-freedom dimension.
+ * Component types for the Finance engine — the freedom math of the Financial Domain.
  *
  * Everything here is plain data — no DB, no framework, no I/O — so the engine
  * stays pure and unit-testable. Persistence and validation live at the edges.

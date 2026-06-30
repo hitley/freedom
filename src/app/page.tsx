@@ -25,7 +25,7 @@ export default async function Home() {
   const session = bypass ? null : await auth();
   if (!bypass && !session?.user) redirect("/signin");
 
-  // Server-side load of each persisted domain (null → app uses its defaults/seed).
+  // Server-side load of each persisted Component (null → app uses its defaults/seed).
   const [
     initialInputs,
     initialVision,

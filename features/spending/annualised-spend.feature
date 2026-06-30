@@ -2,7 +2,7 @@
 Feature: Reading a year of spend from observed transactions
   "What does a year of my life actually cost?" is the number that feeds the vision's
   target spend, the magic number, and ultimately the freedom date. Rather than make
-  the user guess it, the spending domain derives it from real transactions — scaling
+  the user guess it, the spending component derives it from real transactions — scaling
   whatever window of statements they've imported up to a full year.
 
   Two things must be true for that number to be trustworthy: it counts only genuine

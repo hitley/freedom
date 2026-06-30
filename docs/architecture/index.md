@@ -2,10 +2,28 @@
 
 > **The C4 model, top-down.** This **Architecture** section is the *structural* view of
 > Freedom, organised by [C4](https://c4model.com): **C1 Context** (this page) → **C2
-> [Containers](./containers)** (the bounded contexts) → **C3 [Components](./components/)**
-> (generated per context) → **C4 [Data model](./data-model)** (the schema). It complements
-> the [Behaviours](/features/) section, which is the *dynamic* view — what the app does,
-> as executable specs. Structure and behaviour, cross-linked.
+> [Containers](./containers)** (the **Domains**) → **C3 [Components](./components/)** (the
+> modules of a Domain, generated per Component) → **C4 [Data model](./data-model)** (the
+> schema). It complements the [Behaviours](/features/) section, which is the *dynamic* view
+> — what the app does, as executable specs. Structure and behaviour, cross-linked.
+
+## Taxonomy — the words this app uses
+
+Three nested altitudes, mapped onto C4. Use these consistently:
+
+| Altitude | Term | Is | Examples |
+|----------|------|----|----------|
+| **C2 · Container** | **Domain** | a dimension of personal freedom | Financial (built), Time, Health |
+| **C3 · Component** | **Component** *(in code/React: **View**)* | a module within a Domain | Vision, Trajectory, Investments, Buckets, Spending, Inbox |
+| **C4 · Code** | **Element** | a UI/code building block of a Component | a `*Panel`, a chart widget, a `*Editor`/`*Modal`, plus its `types`/`index`/server files |
+
+Disambiguation rules:
+- **"Dimension"** is the outward, experiential synonym for **Domain** (e.g. the tagline "Three
+  dimensions of mastery"); architecture and code say **Domain**.
+- **Component** (the architectural module) and **View** (its name in `.tsx`/React code — the
+  `FinancialView` type) are **synonyms**. We use "View" in code to avoid colliding with "React
+  component", and "Component" in docs.
+- An **Element** *is* a React component, but we call it an Element when talking architecture.
 
 ## Why Freedom exists
 

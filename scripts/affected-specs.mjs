@@ -83,7 +83,7 @@ if (affectedFeatures.size === 0) {
 }
 
 if (uncovered.length > 0) {
-  console.log("\n⚠ Changed domain logic with no behavioural spec referencing it:");
+  console.log("\n⚠ Changed component logic with no behavioural spec referencing it:");
   for (const f of uncovered) console.log(`  • ${f}`);
   console.log("  Consider adding/extending a feature, or a @source tag if one already covers it.");
 }

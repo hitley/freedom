@@ -6,14 +6,14 @@ _The freedom-generating assets the user holds, valued and projected forward._
 This page is generated from the code: file descriptions come from each file's header comment, the model from `types.ts`, and the behaviours from the `@source` tags on the feature specs. Improve the code's comments to enrich it.
 :::
 
-## Components
+## Elements
 
-### Domain (pure)
+### Core (pure)
 
 | File | Responsibility |
 | --- | --- |
 | `index.ts` | _—_ |
-| `types.ts` | Domain types for **investments** — the freedom-generating assets the user holds: superannuation, shares, and ETFs. |
+| `types.ts` | Component types for **investments** — the freedom-generating assets the user holds: superannuation, shares, and ETFs. |
 
 ### Access layer (server)
 
@@ -31,7 +31,7 @@ This page is generated from the code: file descriptions come from each file's he
 
 ## Model
 
-The data types this context owns (from `types.ts`).
+The data types this Component owns (from `types.ts`).
 
 | Type | Kind | Description |
 | --- | --- | --- |
@@ -51,4 +51,4 @@ The data types this context owns (from `types.ts`).
 
 ## Behaviours
 
-_No behavioural specs target this context yet._
+_No behavioural specs target this Component yet._

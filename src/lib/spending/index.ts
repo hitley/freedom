@@ -404,7 +404,7 @@ export function dedupe(
  * Validation at the trust boundary. Statement imports, the LLM extractor, and the
  * manual editor all pass transactions through here before they're stored or trusted
  * — the same rule as any user input. (Ready for persistence per instance, like the
- * other domains; the inbox/DAL wiring lands next.)
+ * other Components; the inbox/DAL wiring lands next.)
  * ------------------------------------------------------------------------- */
 
 const MONEY = z.number().min(0).max(1e9);

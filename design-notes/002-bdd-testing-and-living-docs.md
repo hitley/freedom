@@ -4,10 +4,10 @@
 - **Status:** building — Tier 1 (Gherkin specs in Vitest), Tier 2 (Playwright journey),
   **and** the VitePress `/docs` generation are all wired and running. Docs regenerate
   via a Claude Code PostToolUse hook (chosen over a git/CI trigger). Remaining ideas:
-  a CI `docs:check` guard for non-Claude contributors, and pulling domain doc-comments
+  a CI `docs:check` guard for non-Claude contributors, and pulling component doc-comments
   into the generated pages.
 - **Summary:** Describe the *intended behaviour* of the system in Gherkin `.feature`
-  files, validate them two ways (fast in-process specs for the domain/pipeline, a thin
+  files, validate them two ways (fast in-process specs for the component/pipeline, a thin
   layer of real-browser journeys for the full-stack seams), and treat those same
   feature files as the seed for generated, always-true user documentation.
 
@@ -20,7 +20,7 @@ VitePress on a `/docs` endpoint.
 
 ## Core decision: two tiers, one vocabulary
 
-Most of this app's *intent* lives **below the UI** — in the pure `src/lib` domains and
+Most of this app's *intent* lives **below the UI** — in the pure `src/lib` components and
 the server-side ingestion pipeline. A browser is the wrong (slow, flaky) place to pin
 down "a spend event empties its bucket on its date" or "Reconcile refuses rows that
 didn't come from this item". So we split by where the behaviour actually lives, but
@@ -29,15 +29,15 @@ keep a single Gherkin vocabulary across both:
 ```
 Tier 1 — Behavioural specs (the bulk)     Tier 2 — Journeys (a thin layer)
   .feature → Vitest (in-process)            .feature-style → Playwright (real browser)
-  pure domains + server pipeline            full-stack seams only
+  pure components + server pipeline          full-stack seams only
   milliseconds, no infra                    needs dev server + database
 ```
 
 - **Tier 1** uses **`@amiceli/vitest-cucumber`**: real `.feature` files bound to step
   definitions, running *inside* Vitest (same runner, alias, and Node env as the unit
   tests). Two flavours:
-  - **Pure domain** (`features/spending/annualised-spend.feature`) — no infra at all;
-    steps call the domain helpers directly. This is the default shape.
+  - **Pure component** (`features/spending/annualised-spend.feature`) — no infra at all;
+    steps call the component helpers directly. This is the default shape.
   - **Server pipeline** (`features/ingestion/extract.feature`, `reconcile.feature`) —
     drives the *real* `extract.ts` / `reconcile.ts`, with the DB-backed DAL swapped for
     an in-memory fake (`features/support/dal-fake.ts`) via `vi.mock`. `server-only` is
@@ -101,7 +101,7 @@ files the tests enforce — is now wired:
    (no local feedback) per the brief's "hook" framing — it's advisory, never blocking.
 
 **Deferred:** a CI `docs:check` + BDD run for non-Claude contributors (the hook only
-fires in Claude sessions); and the "clean code → docs" half — pulling domain doc-comments
+fires in Claude sessions); and the "clean code → docs" half — pulling component doc-comments
 into the generated pages alongside the features.
 
 ## What this changes elsewhere

@@ -1,5 +1,5 @@
 /**
- * Domain types for financial **buckets** — a virtual layer of *purpose* over
+ * Component types for financial **buckets** — a virtual layer of *purpose* over
  * the real accounts money actually lives in.
  *
  * The problem this solves: money gets consolidated into one account (e.g. a

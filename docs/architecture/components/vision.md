@@ -1,19 +1,19 @@
 # 🧭 Vision
 
-_Project the goal and why it matters — step one of every freedom dimension._
+_Project the goal and why it matters — step one of every freedom Domain._
 
 ::: tip Generated from source
 This page is generated from the code: file descriptions come from each file's header comment, the model from `types.ts`, and the behaviours from the `@source` tags on the feature specs. Improve the code's comments to enrich it.
 :::
 
-## Components
+## Elements
 
-### Domain (pure)
+### Core (pure)
 
 | File | Responsibility |
 | --- | --- |
 | `index.ts` | _—_ |
-| `types.ts` | Domain types for the vision & goal capture phase — step (1) of every freedom dimension: "project your goals and *why* they matter". |
+| `types.ts` | Component types for the vision & goal capture phase — step (1) of every freedom Domain: "project your goals and *why* they matter". |
 
 ### Access layer (server)
 
@@ -30,7 +30,7 @@ This page is generated from the code: file descriptions come from each file's he
 
 ## Model
 
-The data types this context owns (from `types.ts`).
+The data types this Component owns (from `types.ts`).
 
 | Type | Kind | Description |
 | --- | --- | --- |
@@ -40,4 +40,4 @@ The data types this context owns (from `types.ts`).
 
 ## Behaviours
 
-_No behavioural specs target this context yet._
+_No behavioural specs target this Component yet._

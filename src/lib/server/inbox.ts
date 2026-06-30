@@ -19,12 +19,12 @@ import {
  * Data access layer for the ingestion inbox. Every read/write is scoped to an
  * instance the signed-in user owns (resolved server-side, never from a client id),
  * so there's no IDOR surface. Maps the loosely-typed DB row to the `InboxItem`
- * domain type on the way out.
+ * Component type on the way out.
  */
 
 type InboxRow = typeof inboxItems.$inferSelect;
 
-/** Narrow the DB row's text columns back to the domain's union types. */
+/** Narrow the DB row's text columns back to the Component's union types. */
 function toItem(row: InboxRow): InboxItem {
   return {
     id: row.id,

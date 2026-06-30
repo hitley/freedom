@@ -1,10 +1,11 @@
 // Shared library for the **architecture** docs — the C4 / DDD structural view that sits
 // beside the behavioural (`.feature`) docs. Where `feature-docs.mjs` turns executable
 // specs into the *dynamic* view, this turns the **code itself** into the *structural*
-// view: one C3 "component" page per bounded context, each assembled from
-//   • the file-header doc-comment on every source file in the context (its description),
-//   • the exported model types parsed out of the context's `types.ts` (the C4 model),
-//   • the behaviours that validate the context, via the same `@source` map the feature
+// view: one **C3 Component** page per Component (a module of the Financial Domain),
+// each assembled from
+//   • the file-header doc-comment on every source file in the Component (its description),
+//   • the exported model types parsed out of the Component's `types.ts` (the C4 model),
+//   • the behaviours that validate the Component, via the same `@source` map the feature
 //     docs already build.
 //
 // Nothing here is hand-authored prose: the richer the code's header comments and model
@@ -25,17 +26,18 @@ export const ARCH_SIDEBAR_FILE = path.join(
 );
 
 /**
- * The bounded contexts (C2 "containers", in this app's DDD reading) whose code is rich
- * enough to warrant a generated component page. `paths` are scanned for source files;
- * a directory expands to its files. `modelFile` is the `types.ts` the C4 model is read
- * from. Order here is the order on the page and in the sidebar.
+ * The **Components (C3)** of the Financial Domain whose code is rich enough to warrant a
+ * generated page. (In code/React these are "Views" — `FinancialView` — and in docs they're
+ * "Components"; the two are synonyms. A Component is assembled from its **Elements**.)
+ * `paths` are scanned for source files; a directory expands to its files. `modelFile` is the
+ * `types.ts` the C4 model is read from. Order here is the order on the page and in the sidebar.
  */
 export const CONTEXTS = [
   {
     id: "vision",
     title: "Vision",
     glyph: "🧭",
-    tagline: "Project the goal and why it matters — step one of every freedom dimension.",
+    tagline: "Project the goal and why it matters — step one of every freedom Domain.",
     modelFile: "src/lib/vision/types.ts",
     paths: ["src/lib/vision", "src/lib/server/vision.ts", "src/components/onboarding", "src/components/VisionPanel.tsx"],
   },
@@ -81,11 +83,11 @@ export const CONTEXTS = [
   },
 ];
 
-/** Where a source file sits, for grouping components on the page. */
+/** Where a source file sits, for grouping a Component's Elements on the page. */
 function layerOf(rel) {
   if (rel.startsWith("src/lib/server/")) return "Access layer (server)";
   if (rel.startsWith("src/components/")) return "UI";
-  return "Domain (pure)";
+  return "Core (pure)";
 }
 
 /** Title-case a slug for headings ("my-thing" → "My Thing"). */
@@ -207,7 +209,7 @@ async function buildContext(ctx, sourceMap) {
     }
   }
 
-  // Behaviours that name any of this context's files in a `@source` tag.
+  // Behaviours that name any of this Component's files in a `@source` tag.
   const behaviours = [];
   const behaviourSeen = new Set();
   for (const f of files) {
@@ -224,7 +226,7 @@ async function buildContext(ctx, sourceMap) {
   return { ...ctx, files, model, behaviours };
 }
 
-/** Render one context's C3 component page. */
+/** Render one Component's C3 page (its Elements, model, and behaviours). */
 function renderContextPage(ctx) {
   const out = [`# ${ctx.glyph} ${ctx.title}`, "", `_${ctx.tagline}_`, ""];
 
@@ -235,9 +237,9 @@ function renderContextPage(ctx) {
     "",
   );
 
-  // Components, grouped by layer.
-  const layers = ["Domain (pure)", "Access layer (server)", "UI"];
-  out.push("## Components", "");
+  // Elements, grouped by layer.
+  const layers = ["Core (pure)", "Access layer (server)", "UI"];
+  out.push("## Elements", "");
   for (const layer of layers) {
     const inLayer = ctx.files.filter((f) => f.layer === layer);
     if (inLayer.length === 0) continue;
@@ -251,7 +253,7 @@ function renderContextPage(ctx) {
 
   // C4 model.
   if (ctx.model.length > 0) {
-    out.push("## Model", "", `The data types this context owns (from \`${path.basename(ctx.modelFile)}\`).`, "", "| Type | Kind | Description |", "| --- | --- | --- |");
+    out.push("## Model", "", `The data types this Component owns (from \`${path.basename(ctx.modelFile)}\`).`, "", "| Type | Kind | Description |", "| --- | --- | --- |");
     for (const t of ctx.model) {
       const desc = t.doc ? t.doc.replace(/\|/g, "\\|") : "_—_";
       out.push(`| \`${t.name}\` | ${t.kind} | ${desc} |`);
@@ -262,10 +264,10 @@ function renderContextPage(ctx) {
   // Behaviours (cross-link into the dynamic view).
   out.push("## Behaviours", "");
   if (ctx.behaviours.length > 0) {
-    out.push("Executable specifications that validate this context:", "");
+    out.push("Executable specifications that validate this Component:", "");
     for (const b of ctx.behaviours) out.push(`- [${b.name}](${b.link})`);
   } else {
-    out.push("_No behavioural specs target this context yet._");
+    out.push("_No behavioural specs target this Component yet._");
   }
   out.push("");
 
@@ -290,14 +292,14 @@ export async function buildArchDocs() {
   return docs;
 }
 
-/** The components index page (C3 overview), one entry per context. */
+/** The Components index page (C3 overview), one entry per Component. */
 export function renderComponentsIndex(docs) {
   const out = [
     "# Components (C3)",
     "",
-    "Each **bounded context** as a set of components — the pure domain, its server access layer, and its UI — with the model it owns and the behaviours that validate it. Generated from the source; see each page.",
+    "The **Components** of the Financial Domain — each surfaced as a View in the app (Vision, Trajectory, Investments, Buckets, Spending, Inbox). A Component is a set of **Elements**: its core (pure) model, its server access layer, and its UI — with the model it owns and the behaviours that validate it. Generated from the source; see each page.",
     "",
-    "| Context | What it owns |",
+    "| Component | What it owns |",
     "| --- | --- |",
   ];
   for (const ctx of CONTEXTS) {
@@ -315,7 +317,7 @@ export function renderArchSidebar(docs) {
       collapsed: false,
       items: [
         { text: "C1 · Context", link: "/architecture/" },
-        { text: "C2 · Containers", link: "/architecture/containers" },
+        { text: "C2 · Containers (Domains)", link: "/architecture/containers" },
         { text: "C3 · Components", link: "/architecture/components/" },
         ...docs.map((d) => ({ text: `${d.glyph} ${d.title}`, link: d.link })),
         { text: "C4 · Data model", link: "/architecture/data-model" },

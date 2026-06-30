@@ -97,7 +97,7 @@ const affected = run("node", ["scripts/affected-specs.mjs", "--run", rel]);
 const out = affected.out.trim();
 
 if (/No behavioural specs are affected/.test(out)) {
-  // Only worth surfacing the "uncovered domain logic" nudge, if present.
+  // Only worth surfacing the "uncovered component logic" nudge, if present.
   const warn = out.includes("no behavioural spec referencing it")
     ? out.slice(out.indexOf("⚠"))
     : "";

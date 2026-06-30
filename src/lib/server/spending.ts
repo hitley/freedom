@@ -24,7 +24,7 @@ export async function loadSpending(): Promise<SpendingState | null> {
   if (!row) return null;
 
   // `parse` validates at runtime (category/direction enums, source union), but the
-  // schema widens enums to `string` at the type level, so assert the domain type.
+  // schema widens enums to `string` at the type level, so assert the Component type.
   return spendingStateSchema.parse(row.data) as SpendingState;
 }
 

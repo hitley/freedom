@@ -5,7 +5,7 @@
   persistence — free via the jsonb document — the budget UI, and the reconcile view +
   suggest-and-confirm matching). **Bill ingestion (step 5) is designed (see the detailed
   plan below) but deliberately deferred** — recurring spending stays **manual entry** for
-  now; this step is picked up later. Extends the spending domain and the ingestion inbox
+  now; this step is picked up later. Extends the spending component and the ingestion inbox
   (001). Supersedes the "Transaction ↔ Cashflow matching" deferral in
   [001](001-ingestion-inbox-bookkeeper.md) by giving the *expected* side its own home in
   `spending` rather than reusing buckets' `Cashflow`.
@@ -66,7 +66,7 @@ feature could let a bucket *fund* a recurring expense — a link, not a merge).
 monthly×3) and end dates. `spending/index.ts` already imports from there. Don't reinvent
 scheduling.
 
-## Data model (extends the spending domain — same four-file shape)
+## Data model (extends the spending component — same four-file shape)
 
 ```ts
 // types.ts — new
@@ -103,7 +103,7 @@ interface Transaction {
 - No migration needed: `recurring` rides inside the existing `spending_state` jsonb; only
   the zod schema changes (validates on read/write as today).
 
-## Derived helpers (pure, unit-tested next to the domain)
+## Derived helpers (pure, unit-tested next to the component)
 
 - `monthlyEquivalent(expense)` — occurrences over a representative year × estimate ÷ 12.
 - `monthlyBudget(recurring)` / `budgetByCategory(recurring)` — the headline + breakdown.

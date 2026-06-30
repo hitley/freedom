@@ -30,7 +30,10 @@ const DEFAULT_INPUTS: FinancialInputs = {
   currentAge: 40,
 };
 
-const DIMENSIONS = [
+// The three Domains (C2). "Dimension" is the outward/marketing synonym we use in
+// user-facing copy (see the tagline below); the architecture/code word is "Domain".
+// Only Financial is built; Time and Health are the two unbuilt Domain slots.
+const DOMAINS = [
   { id: "financial", label: "Financial", ready: true },
   { id: "time", label: "Time", ready: false },
   { id: "health", label: "Health", ready: false },
@@ -210,6 +213,13 @@ const SEED_SPENDING: SpendingState = {
   ],
 };
 
+/**
+ * The Views of the Financial Domain. "View" is the code/React name for a C3
+ * **Component** (the two are synonyms — see the taxonomy note in CLAUDE.md); each
+ * value here is one Component, surfaced as a nav option and rendered from its UI
+ * **Elements** (its Panel + any widgets/modals). Vision is a Component too but
+ * opens as a modal rather than taking an inline View slot.
+ */
 type FinancialView =
   | "trajectory"
   | "buckets"
@@ -291,8 +301,8 @@ interface FreedomAppProps {
 }
 
 /**
- * Orchestrates the financial dimension: capture the vision first, then track the
- * numbers. Every domain is persisted per-instance — seeded from the server on
+ * Orchestrates the Financial Domain: capture the vision first, then track the
+ * numbers. Every View (Component) is persisted per-instance — seeded from the server on
  * load and saved (debounced) on change. The vision is saved explicitly when the
  * capture flow completes.
  */
@@ -356,7 +366,7 @@ export default function FreedomApp({
 
   const proj = useMemo(() => project(effectiveInputs), [effectiveInputs]);
 
-  // Debounced persistence of each editable domain (vision is saved explicitly on
+  // Debounced persistence of each editable View (Component) (vision is saved explicitly on
   // completion). The hook skips its first run so seeding from the server doesn't
   // write back.
   useDebouncedSave(inputs, saveInputsAction, setSaveState);
@@ -440,7 +450,7 @@ export default function FreedomApp({
         </div>
         <div className="flex flex-col gap-3 sm:items-end">
           <nav className="flex gap-1 rounded-full border border-border bg-surface p-1">
-            {DIMENSIONS.map((d) => (
+            {DOMAINS.map((d) => (
               <button
                 key={d.id}
                 disabled={!d.ready}

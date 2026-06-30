@@ -18,7 +18,7 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
 - **Recurring expenses, the monthly budget & bill reconciliation — building.** Make the
   Spending tab more than a daily ledger: model the *expected* side (monthly direct debits,
   quarterly/annual ad-hoc bills like car servicing) as a new `RecurringExpense` in the
-  `spending` domain — a bottom-up budget that normalises to "per month" and feeds the
+  `spending` component — a bottom-up budget that normalises to "per month" and feeds the
   vision target more stably than today's noisy window extrapolation. Then **reconcile**
   real bills (dropped into the inbox) against what was expected: suggest-and-confirm
   matching, variance, due/overdue, and estimate refinement over time. **Step 1 (the pure
@@ -42,11 +42,11 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   `design-notes/003-recurring-expenses-and-budget-reconciliation.md` (**Step 5 — Bill
   ingestion**). **After it:** optional estimate-refinement (step 6) and feeding
   `annualBudget` into the vision/engine.
-- **Feed investments into the projection engine.** Today the investments domain is
+- **Feed investments into the projection engine.** Today the investments component is
   deliberately independent of `src/lib/finance`. Wire portfolio totals into the
   engine's `currentInvested` so the freedom-date trajectory reflects real holdings.
   (Same open question for feeding bucket totals in.)
-- **Persistence — ✅ done (financial dimension).** All four domains (engine inputs,
+- **Persistence — ✅ done (Financial Domain).** All four components (engine inputs,
   vision, buckets, investments) now round-trip through Postgres, read/written
   server-side with owner-scoped checks and zod validation. The plan and build log are
   retained below for reference.
@@ -62,7 +62,7 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   monetary figures is deliberately *deferred* (see Security section); revisit as a
   dedicated pass before sharing data with anyone outside the owner.
 
-  **Storage shape: one JSONB document per domain, keyed by `instanceId`** — not
+  **Storage shape: one JSONB document per component, keyed by `instanceId`** — not
   normalised relational tables. Each of `vision` / `buckets` / `investments` is a
   nested document the app reads and writes *whole*, and each already has a zod schema
   that is its validation boundary. So: `vision_state` / `buckets_state` /
@@ -83,8 +83,8 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   - `requireInstance(instanceId, userId)` — single choke-point that confirms
     `instance.ownerId === userId` before *every* read/write. Never trust a client-sent
     instanceId without this.
-  - Per-domain `load<Domain>(instanceId)` / `save<Domain>(instanceId, state)` server
-    actions that re-validate with the domain's zod schema and call `requireInstance`.
+  - Per-component `load<Component>(instanceId)` / `save<Component>(instanceId, state)` server
+    actions that re-validate with the component's zod schema and call `requireInstance`.
 
   **UI wiring:** turn `FreedomApp`'s ancestor into a server component that loads the
   four pieces of state for the default instance and passes them as initial props;
@@ -108,9 +108,9 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   5. ✅ Wired `vision` / `buckets` / `investments` through DAL + actions, loaded in
      `page.tsx` and saved from `FreedomApp` (buckets/investments debounced via
      `useDebouncedSave`; vision saved on capture completion).
-  6. ✅ `CLAUDE.md` updated (all four domains now persisted).
+  6. ✅ `CLAUDE.md` updated (all four components now persisted).
 
-  **Persistence is now complete for the financial dimension.** All four domains
+  **Persistence is now complete for the Financial Domain.** All four components
   round-trip through Postgres with the same auth-gated, zod-validated, owner-scoped
   pattern.
 
@@ -146,8 +146,8 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
   state model via a four-stage pipeline (Capture → Extract → Propose → Reconcile), with
   user approval before anything touches live numbers. Decided: Vercel Cron runner,
   propose-then-approve, **bank CSV first** (deterministic, AI-free spine), a new `inbox`
-  table + new `spending` domain whose `annualisedSpend` feeds the vision's target spend.
-  **The deterministic pipeline now runs end-to-end:** the `spending` domain (persisted +
+  table + new `spending` component whose `annualisedSpend` feeds the vision's target spend.
+  **The deterministic pipeline now runs end-to-end:** the `spending` component (persisted +
   Spending UI), inbox **Capture** (`inbox_item` table, DAL, Inbox tab — drop CSV/text →
   `pending`), **Extract** (`parseStatementCsv` → dedupe → `proposed`, behind a manual
   "Process" button), and **Reconcile** (the `ReviewModal` — re-categorise/drop drafts,
@@ -165,14 +165,15 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
 
 ## Later / bigger bets
 
-### Dimensions 2 & 3 (Time & Health) — coming soon
+### Domains 2 & 3 (Time & Health) — coming soon
 
-Both slot into the same **vision → current-state → trajectory** framework as the
-financial dimension; neither is built yet. Capturing ideas here so they're not lost.
+Both are empty **Domain** slots (C2) that slot into the same **vision → current-state →
+trajectory** framework as the Financial Domain; neither is built yet. Capturing ideas here
+so they're not lost.
 
-#### Health freedom (Dimension idea)
+#### Health freedom (Domain idea)
 
-The navigation breaks the dimension into three views, mirroring the financial split of
+The navigation breaks the Domain into three Components, mirroring the financial split of
 *goal → reality → flow* but framed as an **energy balance** (calories in vs calories out):
 
 - **Vision** — set a **health goal** and *why* it matters. Not one-size-fits-all: could be
@@ -188,7 +189,7 @@ The **trajectory** would project the energy balance over time toward the chosen 
 where the data comes from (manual entry first, then a wearable / health-app feed behind a
 clean ingestion seam, mirroring the financial `PriceProvider` / Open-Banking pattern).
 
-#### Time freedom (Dimension idea)
+#### Time freedom (Domain idea)
 
 Same **vision → current-state → trajectory** framework, oriented around what to *do* with
 freed-up time:
@@ -201,7 +202,7 @@ freed-up time:
   status — wishlist → planned → done).
 
 The **trajectory** would track progress through the bucket list / travel planner over time.
-Open question: how this connects to the financial dimension (free time is partly bought —
+Open question: how this connects to the Financial Domain (free time is partly bought —
 the freedom date enables the travel plan) and to Health (energy/capacity to do it).
 
 ## Tidy-ups (do when nearby)

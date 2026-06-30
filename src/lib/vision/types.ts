@@ -1,6 +1,6 @@
 /**
- * Domain types for the vision & goal capture phase — step (1) of every freedom
- * dimension: "project your goals and *why* they matter".
+ * Component types for the vision & goal capture phase — step (1) of every freedom
+ * Domain: "project your goals and *why* they matter".
  *
  * Plain data only — no DB, no framework, no I/O — so it stays portable and
  * unit-testable. Persistence and validation live at the edges (see schema below).

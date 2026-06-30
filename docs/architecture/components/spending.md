@@ -6,15 +6,15 @@ _The user's observed outgoings and income — the data behind annualised spend._
 This page is generated from the code: file descriptions come from each file's header comment, the model from `types.ts`, and the behaviours from the `@source` tags on the feature specs. Improve the code's comments to enrich it.
 :::
 
-## Components
+## Elements
 
-### Domain (pure)
+### Core (pure)
 
 | File | Responsibility |
 | --- | --- |
 | `csv.ts` | Deterministic CSV → candidate transactions — the AI-free **Extract** stage of the ingestion pipeline (see `design-notes/001-ingestion-inbox-bookkeeper.md`). Pure and I/O-free: given the raw text of a bank/current-account statement export, it produces {@link DraftTransaction}s the inbox can dedupe and propose for review. |
 | `index.ts` | _—_ |
-| `types.ts` | Domain types for **spending** — the user's *observed* outgoings and income, as opposed to the *intended* movements modelled by buckets' `Cashflow`s. |
+| `types.ts` | Component types for **spending** — the user's *observed* outgoings and income, as opposed to the *intended* movements modelled by buckets' `Cashflow`s. |
 
 ### Access layer (server)
 
@@ -33,7 +33,7 @@ This page is generated from the code: file descriptions come from each file's he
 
 ## Model
 
-The data types this context owns (from `types.ts`).
+The data types this Component owns (from `types.ts`).
 
 | Type | Kind | Description |
 | --- | --- | --- |
@@ -59,7 +59,7 @@ The data types this context owns (from `types.ts`).
 
 ## Behaviours
 
-Executable specifications that validate this context:
+Executable specifications that validate this Component:
 
 - [Extract bank statements into reviewable proposals](/features/ingestion/extract)
 - [Reconcile approved proposals into the spending ledger](/features/ingestion/reconcile)

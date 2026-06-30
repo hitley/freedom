@@ -47,7 +47,7 @@ without corrupting state. Same instinct as the existing `PriceProvider` seam and
 
 ## New data model
 
-**`inbox` domain — a real table** (not jsonb-on-instance: items have independent
+**`inbox` component — a real table** (not jsonb-on-instance: items have independent
 lifecycles and are queried by status). DAL in `src/lib/server/inbox.ts`, auth-gated via
 `requireInstance`, `instanceId` on every row.
 
@@ -62,7 +62,7 @@ InboxItem {
 }
 ```
 
-**`spending` domain — new pure domain** (four-file pattern like `buckets`/
+**`spending` component — new pure component** (four-file pattern like `buckets`/
 `investments`). This is genuinely new: buckets hold *scheduled* `Cashflow`s
 (intentions); investments hold holdings; there's nowhere for *observed* expenses to
 land today.
@@ -102,10 +102,10 @@ land today.
 ## Build order (spine first, AI-free)
 
 1. ✅ `inbox` table + DAL (2026-06-22) — `inbox_item` table (many rows/instance,
-   `(instance_id, status)` index, migration `0003`), pure `src/lib/inbox` domain (types +
+   `(instance_id, status)` index, migration `0003`), pure `src/lib/inbox` component (types +
    helpers + `newInboxItemSchema` + 6 tests), DAL `src/lib/server/inbox.ts`
    (`listInbox`/`addInboxItem`/`getInboxItem`/`setInboxStatus`, all owner-scoped).
-2. ✅ `spending` pure domain — `src/lib/spending` (types + helpers + zod + 16 tests).
+2. ✅ `spending` pure component — `src/lib/spending` (types + helpers + zod + 16 tests).
    `Transaction` (signed by `direction`, `source` carries import provenance),
    `summarise` / `spendByCategory` / `spendByMonth`, `spendWindow` / `annualisedSpend`,
    and `dedupeKey` / `dedupe` for the Propose stage. Landed 2026-06-22.

@@ -1,13 +1,13 @@
 /**
- * Domain types for the **ingestion inbox** — the durable queue at the head of the
+ * Component types for the **ingestion inbox** — the durable queue at the head of the
  * bookkeeper pipeline (Capture → Extract → Propose → Reconcile, see
  * `design-notes/001-ingestion-inbox-bookkeeper.md`).
  *
- * Unlike the other finance domains (each a single jsonb document per instance), the
+ * Unlike the other Components (each a single jsonb document per instance), the
  * inbox is a **real table with one row per dropped artifact**: items have independent
  * lifecycles, are queried by status, and are processed asynchronously. An item is
  * captured raw and untouched, then a later stage extracts candidate facts from it,
- * which become reviewable drafts, which (on approval) reconcile into a domain — today,
+ * which become reviewable drafts, which (on approval) reconcile into a Component — today,
  * spending. The raw artifact is never mutated; status and derived fields move around it.
  *
  * Everything here is plain data — the helpers in `index.ts` stay pure and the DAL
@@ -26,7 +26,7 @@ export type InboxSource = "csv" | "text" | "pdf" | "image" | "email";
  *  - `pending`    — captured, awaiting processing.
  *  - `extracting` — a processor has claimed it and is pulling out candidate facts.
  *  - `proposed`   — extraction produced drafts awaiting the user's review.
- *  - `applied`    — drafts were approved and reconciled into a domain.
+ *  - `applied`    — drafts were approved and reconciled into a Component.
  *  - `failed`     — extraction errored (see `error`); can be retried.
  *  - `dismissed`  — the user discarded it; kept for provenance, never applied.
  */

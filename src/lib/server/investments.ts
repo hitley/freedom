@@ -22,7 +22,7 @@ export async function loadInvestments(): Promise<InvestmentsState | null> {
   if (!row) return null;
 
   // `parse` validates the data at runtime (incl. the DRP frequency enum), but the
-  // schema's enum widens to `string` at the type level, so assert the domain type.
+  // schema's enum widens to `string` at the type level, so assert the Component type.
   return investmentsStateSchema.parse(row.data) as InvestmentsState;
 }
 

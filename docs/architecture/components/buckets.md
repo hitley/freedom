@@ -6,15 +6,15 @@ _A virtual layer of purpose over the real accounts money lives in._
 This page is generated from the code: file descriptions come from each file's header comment, the model from `types.ts`, and the behaviours from the `@source` tags on the feature specs. Improve the code's comments to enrich it.
 :::
 
-## Components
+## Elements
 
-### Domain (pure)
+### Core (pure)
 
 | File | Responsibility |
 | --- | --- |
 | `index.ts` | _—_ |
 | `schedule.ts` | Recurrence engine for scheduled bucket payments. |
-| `types.ts` | Domain types for financial **buckets** — a virtual layer of *purpose* over the real accounts money actually lives in. |
+| `types.ts` | Component types for financial **buckets** — a virtual layer of *purpose* over the real accounts money actually lives in. |
 
 ### Access layer (server)
 
@@ -34,7 +34,7 @@ This page is generated from the code: file descriptions come from each file's he
 
 ## Model
 
-The data types this context owns (from `types.ts`).
+The data types this Component owns (from `types.ts`).
 
 | Type | Kind | Description |
 | --- | --- | --- |
@@ -53,4 +53,4 @@ The data types this context owns (from `types.ts`).
 
 ## Behaviours
 
-_No behavioural specs target this context yet._
+_No behavioural specs target this Component yet._

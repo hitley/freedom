@@ -1,7 +1,7 @@
 /**
  * Small UI primitives shared by the maximised **detail views** (holdings,
  * buckets, …). These were copy-pasted per detail component; they live here now
- * so every detail view reads the same. Pure presentational — no domain logic.
+ * so every detail view reads the same. Pure presentational — no business logic.
  */
 
 /** A compact money label for chart axes/tooltips: £950, £1.2k, £3.4m. */

@@ -12,7 +12,7 @@ import {
   type Transaction,
 } from "@/lib/spending";
 
-// A pure-domain spec: the budget + reconciliation helpers run directly, no infra.
+// A pure-component spec: the budget + reconciliation helpers run directly, no infra.
 const feature = await loadFeature("features/spending/recurring-budget.feature");
 
 interface ExpenseRow {

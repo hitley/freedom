@@ -1,9 +1,14 @@
 # C2 · Containers
 
-In this app's DDD reading, the **C2 "containers" are the bounded contexts** — the logical
-modules the code is organised into — rather than separate deployable units (everything
-ships as one Next.js app on Vercel, with the docs as a static site beside it). Each context
-owns its model, its rules, and its slice of the UI, and depends **inward only**.
+In this app's DDD reading, the **C2 "containers" are the Domains** — the dimensions of personal
+freedom the app tracks (Financial, Time, Health) — rather than separate deployable units
+(everything ships as one Next.js app on Vercel, with the docs as a static site beside it). Only
+the **Financial** Domain is built today; **Time** and **Health** are empty slots in the same
+framework.
+
+A Domain is made of **Components** (C3) — its modules, each surfaced as a View in the app and
+each owning its model, its rules, and its slice of the UI, depending **inward only**. The
+Components below all belong to the Financial Domain.
 
 ## The big picture
 
@@ -13,9 +18,9 @@ flowchart TD
 
   subgraph web["Web app · Next.js / React / Vercel"]
     direction TB
-    ui["UI &amp; server actions<br/>FreedomApp + per-context panels"]
+    ui["UI &amp; server actions<br/>FreedomApp + per-Component Views"]
 
-    subgraph contexts["Bounded contexts"]
+    subgraph financial["📊 Financial Domain · Components"]
       direction LR
       vision["🧭 Vision"]
       finance["📊 Finance engine"]
@@ -24,6 +29,8 @@ flowchart TD
       spending["💸 Spending"]
       inbox["📥 Inbox &amp; ingestion"]
     end
+
+    timehealth["🕒 Time · 🩺 Health<br/>(future Domains — not built)"]
 
     auth["🔐 Auth &amp; tenancy<br/>(instance = workspace)"]
     dal["Access layer (DAL)<br/>src/lib/server"]
@@ -34,8 +41,8 @@ flowchart TD
   docs["📚 Docs site<br/>VitePress → /docs"]
 
   user --> ui
-  ui --> contexts
-  contexts --> dal
+  ui --> financial
+  financial --> dal
   ui --> auth
   auth --> google
   dal --> auth
@@ -43,36 +50,39 @@ flowchart TD
   inbox -. "reconciles into" .-> spending
   investments -. "feeds totals into" .-> finance
 
-  docs -. "generated from" .-> contexts
+  docs -. "generated from" .-> financial
 ```
 
-_Solid arrows are runtime dependencies; dashed arrows are domain relationships and the
+_Solid arrows are runtime dependencies; dashed arrows are Component relationships and the
 docs-generation link._
 
-## The contexts
+## The Financial Domain's Components
 
-| Context | Responsibility | Depends on |
-|---------|----------------|------------|
+| Component | Responsibility | Depends on |
+|-----------|----------------|------------|
 | [🧭 Vision](./components/vision) | The goal and *why* — headline, motivations, FIRE style, target spend. | Finance (FIRE style) |
 | [📊 Finance engine](./components/finance) | Pure freedom math: magic number, coast number, projection. | — (pure) |
 | [🪣 Buckets](./components/buckets) | Purpose envelopes over real accounts; a recurrence + simulation engine. | — (pure) |
 | [📈 Investments](./components/investments) | Holdings, valuation, contributions, DRP, projection. | Buckets (recurrence engine) |
 | [💸 Spending](./components/spending) | Observed transactions; annualised spend; the CSV parser. | — (pure) |
 | [📥 Inbox & ingestion](./components/inbox) | The capture → extract → propose → reconcile pipeline. | Spending (reconcile target) |
-| 🔐 Auth & tenancy | Identity (Auth.js + Google), the instance/workspace model, the authorization choke-point. | Google, Postgres |
+
+**Auth & tenancy** (🔐 identity via Auth.js + Google, the instance/workspace model, the
+authorization choke-point) is **cross-cutting infrastructure**, not a Component of any one
+Domain — every Domain's data hangs off an instance and flows through it.
 
 ## Cross-cutting rules
 
-These hold across every context — they're why the model stays modular:
+These hold across every Component — they're why the model stays modular:
 
-- **Dependencies point inward.** UI → DAL → domain. A `src/lib/<domain>` imports nothing
-  framework- or IO-bound, so it's pure and unit-testable.
+- **Dependencies point inward.** UI → DAL → Component core. A `src/lib/<component>` imports
+  nothing framework- or IO-bound, so its core (pure) Elements are unit-testable.
 - **The DAL is the only door to data** (`src/lib/server`). It resolves the instance from
-  the session and validates every read/write through the context's zod schema — there is
+  the session and validates every read/write through the Component's zod schema — there is
   no client-supplied id surface. See [C4 · Data model](./data-model).
 - **Shared engines, not duplication.** The buckets **recurrence engine** and the
-  **detail-view shell** are reused across contexts rather than re-implemented.
-- **Each context is validated by behaviours.** Its [component page](./components/) links to
+  **detail-view shell** are reused across Components rather than re-implemented.
+- **Each Component is validated by behaviours.** Its [Component page](./components/) links to
   the executable [specs](/features/) that pin its rules.
 
 ---

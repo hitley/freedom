@@ -102,13 +102,15 @@ export const financialProfiles = pgTable("financial_profile", {
 });
 
 /**
- * Document-per-domain state for an instance. The vision / buckets / investments
- * domains are each a nested document the app reads and writes whole, with a zod
+ * Document-per-Component state for an instance. The vision / buckets / investments
+ * Components are each a nested document the app reads and writes whole, with a zod
  * schema (`freedomVisionSchema` / `bucketsStateSchema` / `investmentsStateSchema`)
  * as the validation boundary — so we store the validated blob in a `jsonb` column
  * rather than normalising into relational tables. One row per instance
  * (`instanceId` unique) so the save path upserts. The `data` column is left
- * untyped here; the DAL parses it through the domain's zod schema on read/write.
+ * untyped here; the DAL parses it through the Component's zod schema on read/write.
+ * (These all belong to the Financial Domain; a `domain` discriminator column is the
+ * future seam when the Time / Health Domains land — not built yet.)
  */
 export const visionStates = pgTable("vision_state", {
   id: uuid("id").primaryKey().defaultRandom(),

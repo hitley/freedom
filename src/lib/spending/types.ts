@@ -1,12 +1,12 @@
 /**
- * Domain types for **spending** — the user's *observed* outgoings and income,
+ * Component types for **spending** — the user's *observed* outgoings and income,
  * as opposed to the *intended* movements modelled by buckets' `Cashflow`s.
  *
  * This is where real transactions land: rows imported from a bank/current-account
  * statement (via the ingestion inbox) or hand-entered. The headline figure the rest
  * of the app cares about is **annualised spend** — a data-backed answer to "what does
  * a year of my life actually cost", which feeds the vision's target spend → magic
- * number → freedom date. Today that target is typed by hand; this domain makes it
+ * number → freedom date. Today that target is typed by hand; this Component makes it
  * something the numbers can corroborate.
  *
  * Everything here is plain data — no DB, no framework, no I/O — so the helpers in

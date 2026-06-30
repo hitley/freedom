@@ -1,8 +1,8 @@
 /**
- * Shared form primitives used by the per-domain **editor modals** (buckets,
+ * Shared form primitives used by the **editor-modal Elements** across Views (buckets,
  * investments, spending, …). These were copy-pasted per editor; they live here
- * now so every form reads and behaves the same. Pure presentational — no domain
- * logic. The editors keep their own domain-specific sub-forms (toggles,
+ * now so every form reads and behaves the same. Pure presentational — no business
+ * logic. The editors keep their own View-specific sub-forms (toggles,
  * cashflow/history rows); only these generic field controls are shared.
  */
 

@@ -1,12 +1,12 @@
 /**
- * Domain types for **investments** — the freedom-generating assets the user
+ * Component types for **investments** — the freedom-generating assets the user
  * holds: superannuation, shares, and ETFs.
  *
  * Two things make this more than a list of balances:
  *  - **Market-priced holdings** (shares, ETFs) are valued `units × pricePerUnit`,
  *    so their worth moves with the market. The price is entered manually for now;
  *    a live feed slots in later via the `PriceProvider` seam (see `index.ts`)
- *    without touching this domain.
+ *    without touching this Component.
  *  - **Recurring contributions** (e.g. monthly super or a regular ETF purchase)
  *    and **dividend reinvestment (DRP)** — dividends that buy more of the holding
  *    instead of paying out as cash — both grow a holding over time. The look-ahead
@@ -102,7 +102,7 @@ export interface InvestmentsState {
 /* ----------------------------------------------------------------------------
  * Price feed seam. Manual today (holdings carry their own `pricePerUnit`); a
  * live provider (broker API, market-data vendor) implements `PriceProvider`
- * later with no change to the domain or UI value math.
+ * later with no change to the Component or UI value math.
  * ------------------------------------------------------------------------- */
 
 /** A market quote for a ticker. `asOf` is a date-only ISO string. */

@@ -4,7 +4,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 /**
  * The ingestion pipeline, end-to-end through the real UI — the one journey that no
- * domain-level spec can cover, because it only exists when Capture → Extract →
+ * component-level spec can cover, because it only exists when Capture → Extract →
  * Propose → Reconcile, React state, the server actions, and the database are all
  * wired together (see design-notes/002).
  *

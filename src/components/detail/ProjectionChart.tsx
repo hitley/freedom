@@ -28,7 +28,7 @@ const yearLabel = (d: Date) => d.toLocaleDateString("en-GB", { year: "numeric" }
  * solid with point markers, left of "today") and a forward projection (dashed,
  * right of today) and it handles the scales, gridlines, today divider, an
  * optional horizontal reference line (e.g. a goal), and a hover scrubber that
- * snaps to the nearest point of either series. The tooltip text is domain-specific,
+ * snaps to the nearest point of either series. The tooltip text is View-specific,
  * so the caller supplies `tooltipLines(series, idx)` — line 0 renders muted, line
  * 1 bold, the rest plain.
  */

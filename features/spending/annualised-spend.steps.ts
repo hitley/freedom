@@ -9,7 +9,7 @@ import {
   type Transaction,
 } from "@/lib/spending";
 
-// A pure-domain spec: no DB, no server, no mocks — it exercises the spending
+// A pure-component spec: no DB, no server, no mocks — it exercises the spending
 // helpers directly. This is the cheap, infra-free shape most behavioural specs
 // should take; the ingestion specs only reach for a fake DAL because the pipeline
 // is server-side. See design-notes/002-bdd-testing-and-living-docs.md.
