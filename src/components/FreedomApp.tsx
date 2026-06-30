@@ -436,7 +436,7 @@ export default function FreedomApp({
           <div className="font-display text-2xl font-bold tracking-tight">
             freedom<span className="text-emerald">.</span>
           </div>
-          <p className="mt-1 text-sm text-muted">Three dimensions. One life.</p>
+          <p className="mt-1 text-sm text-muted">Three dimensions of mastery. One life.</p>
         </div>
         <div className="flex flex-col gap-3 sm:items-end">
           <nav className="flex gap-1 rounded-full border border-border bg-surface p-1">
