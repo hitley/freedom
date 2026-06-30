@@ -41,6 +41,15 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
     badge in place of sign-out.
 - **Database**: Neon Postgres + Drizzle ORM (`src/db/`). Type-safe, parameterised
   queries. Schema in `src/db/schema.ts`; migrations via `drizzle-kit` → `drizzle/`.
+  `src/db/index.ts` exposes a single `db` but picks the driver at boot by
+  `DATABASE_DRIVER`: the default **Neon** HTTP driver (`neon-http`, prod + shared),
+  or **PGlite** (`DATABASE_DRIVER=pglite`) for local dev — an in-process WASM
+  Postgres persisted to `./.pglite` (`PGLITE_DATA_DIR`), no server/Docker, so dev
+  data never touches the shared Neon DB. Both drivers are dynamically imported so
+  PGlite's WASM stays out of the prod bundle (also marked `serverExternalPackages`
+  in `next.config.ts`). PGlite can't be reached by `drizzle-kit migrate` (no wire
+  server) — apply migrations with **`npm run db:local`** (`scripts/migrate-local.mjs`,
+  the PGlite migrator over the committed `drizzle/` SQL).
 - **Engine** (`src/lib/finance/`): pure, dependency-light, framework-agnostic math
   (magic number, coast number, month-by-month projection). No I/O — unit-testable.
   Validation via zod at the trust boundary (`financialInputsSchema`).
@@ -304,12 +313,16 @@ and 3 (e.g. Time, Health) are slots in the same framework, not yet built.
 
 1. `npm install`
 2. `cp .env.example .env.local` and fill it in:
-   - `DATABASE_URL` — a Neon Postgres connection string (neon.tech or Vercel
+   - **Database** — for local dev the quickest path is `DATABASE_DRIVER=pglite`
+     (in-process Postgres, no server, persists to `./.pglite`); leave it unset to
+     use a real Neon connection string in `DATABASE_URL` (neon.tech or Vercel
      Marketplace).
-   - `AUTH_SECRET` — generate with `npx auth secret`.
+   - `AUTH_SECRET` — generate with `npx auth secret`. (Or set `AUTH_DEV_BYPASS=true`
+     to skip Google sign-in entirely for local dev.)
    - `AUTH_GOOGLE_ID` / `AUTH_GOOGLE_SECRET` — a Google Cloud OAuth client (Web).
      Add redirect URI `http://localhost:3000/api/auth/callback/google`.
-3. `npx drizzle-kit migrate` — create the tables in your database.
+3. Create the tables: **`npm run db:local`** (PGlite) or `npx drizzle-kit migrate`
+   (Neon / any wire-protocol Postgres).
 4. `npm run dev` — open http://localhost:3000.
 
 The app boots without the DB/auth env set, but any page that touches sign-in or
@@ -336,7 +349,9 @@ persistence will error until `.env.local` is populated and migrations are run.
   `npm run docs:affected -- --run` runs the specs a changed path maps to.
 - `npm run lint` — Next.js lint. Type-check: `npx tsc --noEmit`.
 - `npx drizzle-kit generate` — create a migration from schema changes.
-- `npx drizzle-kit migrate` — apply migrations to `DATABASE_URL`.
+- `npx drizzle-kit migrate` — apply migrations to `DATABASE_URL` (Neon / wire-protocol).
+- `npm run db:local` — apply migrations to the local **PGlite** database
+  (`DATABASE_DRIVER=pglite`); re-run after `drizzle-kit generate`.
 - `npx auth secret` — generate `AUTH_SECRET`.
 
 ## Patterns (follow these — they save re-deriving from source)
