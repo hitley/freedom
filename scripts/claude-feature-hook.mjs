@@ -102,8 +102,13 @@ if (/No behavioural specs are affected/.test(out)) {
     ? out.slice(out.indexOf("⚠"))
     : "";
   if (warn) notes.push(warn);
+} else if (affected.ok) {
+  // Success is the common case — keep it to one line. The full vitest run is just
+  // noise in the model's context; only failures get the verbose output (below).
+  const m = out.match(/Tests\s+(\d+) passed/);
+  notes.push(m ? `✓ Affected behavioural specs pass (${m[1]} tests).` : "✓ Affected behavioural specs pass.");
 } else {
-  notes.push(affected.ok ? "Affected behavioural specs pass:\n" + out : "Affected behavioural specs FAILED:\n" + out);
+  notes.push("Affected behavioural specs FAILED:\n" + out);
 }
 
 if (notes.length === 0) silent();
