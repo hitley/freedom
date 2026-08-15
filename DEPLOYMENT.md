@@ -1,6 +1,6 @@
 # Deploying Freedom to Vercel
 
-The production deployment runbook. `CLAUDE.md`'s **Getting started** covers a local
+The production deployment runbook. `README.md`'s **Getting started** covers a local
 clone; this covers getting the app **live on Vercel** with real auth + a database.
 
 - **Created:** 2026-06-27 (to be executed 2026-06-28)

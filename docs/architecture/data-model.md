@@ -144,7 +144,7 @@ zod boundary in and out.
 **Used where:** seeds the **Trajectory** view's projection (`project(inputs)` in
 `FreedomApp`). Note: `currentInvested` and `monthlyContribution` are still persisted but
 are now **overridden at render** by figures derived from the investments Component (portfolio
-value + contributions ÷ 12) — see the Reality section note in `CLAUDE.md`.
+value + contributions ÷ 12) — see the Reality note in `src/components/CLAUDE.md`.
 
 > ⚠️ **Security note:** monetary figures are stored as plain `numeric` for now.
 > Field-level encryption of these is a planned hardening step before any real/shared

@@ -54,7 +54,9 @@ if (!filePath) silent();
 
 const rel = path.relative(ROOT, path.resolve(ROOT, filePath));
 const isFeature = rel.endsWith(".feature");
-const isAppPath = rel.startsWith("src/lib/") || rel.startsWith("src/");
+// Only application source counts — Markdown (folder CLAUDE.md notes, etc.) isn't logic
+// and has no specs, so it would only ever produce a spurious "uncovered" nudge.
+const isAppPath = rel.startsWith("src/") && !rel.endsWith(".md");
 if (!isFeature && !isAppPath) silent();
 
 function run(cmd, args) {

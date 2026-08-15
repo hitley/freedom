@@ -35,7 +35,7 @@ Capture  →  Extract  →  Propose  →  Reconcile
 **Why:** keeps the slow/fallible/LLM-driven async part strictly separated from the
 truth (buckets/investments/spend numbers). The agent can be wrong, retried, or swapped
 without corrupting state. Same instinct as the existing `PriceProvider` seam and the
-"ingestion behind a clean interface" note in `CLAUDE.md`.
+"ingestion behind a clean interface" note in `src/lib/inbox/CLAUDE.md`.
 
 ## Forks chosen
 
