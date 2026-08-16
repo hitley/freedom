@@ -17,15 +17,17 @@ import ReconcileModal from "./ReconcileModal";
 import RecurringExpenseEditor from "./RecurringExpenseEditor";
 import TransactionEditor from "./TransactionEditor";
 
-const gbp0 = new Intl.NumberFormat("en-GB", {
+const money0 = new Intl.NumberFormat("en-GB", {
   style: "currency",
-  currency: "GBP",
+  currency: "AUD",
+  currencyDisplay: "narrowSymbol",
   maximumFractionDigits: 0,
 });
 
-const gbp2 = new Intl.NumberFormat("en-GB", {
+const money2 = new Intl.NumberFormat("en-GB", {
   style: "currency",
-  currency: "GBP",
+  currency: "AUD",
+  currencyDisplay: "narrowSymbol",
   maximumFractionDigits: 2,
 });
 
@@ -159,19 +161,19 @@ export default function SpendingPanel({
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
         <Stat
           label="Annualised spend"
-          value={gbp0.format(window.annualised)}
+          value={money0.format(window.annualised)}
           accent="text-emerald"
           hint={
             vsTarget === null
               ? window.days > 0
                 ? `from ${window.days} days of data`
                 : "no spend recorded yet"
-              : `${Math.abs(vsTarget * 100) < 0.5 ? "on" : `${(Math.abs(vsTarget) * 100).toFixed(0)}% ${vsTarget > 0 ? "above" : "below"}`} your ${gbp0.format(target)} target`
+              : `${Math.abs(vsTarget * 100) < 0.5 ? "on" : `${(Math.abs(vsTarget) * 100).toFixed(0)}% ${vsTarget > 0 ? "above" : "below"}`} your ${money0.format(target)} target`
           }
         />
         <Stat
           label="Spent"
-          value={gbp0.format(summary.totalOut)}
+          value={money0.format(summary.totalOut)}
           hint={
             window.fromDate && window.toDate
               ? `${dayMonth.format(parse(window.fromDate))} – ${dayMonth.format(parse(window.toDate))}`
@@ -180,9 +182,9 @@ export default function SpendingPanel({
         />
         <Stat
           label="Income"
-          value={gbp0.format(summary.totalIn)}
+          value={money0.format(summary.totalIn)}
           accent="text-gold"
-          hint={`net ${summary.net >= 0 ? "+" : ""}${gbp0.format(summary.net)}`}
+          hint={`net ${summary.net >= 0 ? "+" : ""}${money0.format(summary.net)}`}
         />
       </div>
 
@@ -198,7 +200,7 @@ export default function SpendingPanel({
                 key={c.category}
                 className={CAT_BAR[i % CAT_BAR.length]}
                 style={{ width: `${(c.amount / summary.totalOut) * 100}%` }}
-                title={`${catMeta(c.category).label}: ${gbp0.format(c.amount)}`}
+                title={`${catMeta(c.category).label}: ${money0.format(c.amount)}`}
               />
             ))}
           </div>
@@ -211,7 +213,7 @@ export default function SpendingPanel({
                 <span className="text-muted">
                   {catMeta(c.category).glyph} {catMeta(c.category).label}
                 </span>
-                <span className="text-foreground">{gbp0.format(c.amount)}</span>
+                <span className="text-foreground">{money0.format(c.amount)}</span>
               </div>
             ))}
           </div>
@@ -259,15 +261,15 @@ export default function SpendingPanel({
                   Monthly budget
                 </div>
                 <div className="mt-1 font-display text-2xl font-bold text-emerald">
-                  {gbp0.format(budget.monthly)}
+                  {money0.format(budget.monthly)}
                   <span className="ml-1 text-sm font-normal text-muted">/mo</span>
                 </div>
               </div>
               <div className="text-right text-xs text-muted">
-                {gbp0.format(budget.annual)}/yr planned
+                {money0.format(budget.annual)}/yr planned
                 {window.annualised > 0 && (
                   <div className="mt-0.5">
-                    observed ≈ {gbp0.format(window.annualised)}/yr
+                    observed ≈ {money0.format(window.annualised)}/yr
                   </div>
                 )}
               </div>
@@ -282,7 +284,7 @@ export default function SpendingPanel({
                       key={c.category}
                       className={CAT_BAR[i % CAT_BAR.length]}
                       style={{ width: `${(c.amount / budget.monthly) * 100}%` }}
-                      title={`${catMeta(c.category).label}: ${gbp0.format(c.amount)}/mo`}
+                      title={`${catMeta(c.category).label}: ${money0.format(c.amount)}/mo`}
                     />
                   ))}
                 </div>
@@ -313,13 +315,13 @@ export default function SpendingPanel({
                         )}
                       </div>
                       <div className="mt-0.5 text-xs text-muted">
-                        {cadenceLabel(e.recurrence)} · {gbp2.format(e.estimate)}
+                        {cadenceLabel(e.recurrence)} · {money2.format(e.estimate)}
                         {e.basis === "estimated" && " · est."}
                       </div>
                     </div>
                     <span className="shrink-0 text-right">
                       <span className="font-display text-sm font-semibold tabular-nums text-foreground">
-                        {gbp0.format(monthlyEquivalent(e))}
+                        {money0.format(monthlyEquivalent(e))}
                       </span>
                       <span className="block text-[11px] text-muted">/mo</span>
                     </span>
@@ -344,7 +346,7 @@ export default function SpendingPanel({
                         {dayMonth.format(parse(o.dueDate))}
                       </span>
                       <span className="text-foreground">{o.payee}</span>
-                      <span className="text-muted">{gbp0.format(o.estimate)}</span>
+                      <span className="text-muted">{money0.format(o.estimate)}</span>
                     </div>
                   ))}
                 </div>
@@ -404,7 +406,7 @@ export default function SpendingPanel({
                   }`}
                 >
                   {out ? "−" : "+"}
-                  {gbp2.format(tx.amount)}
+                  {money2.format(tx.amount)}
                 </span>
               </button>
             );

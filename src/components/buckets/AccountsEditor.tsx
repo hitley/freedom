@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ACCOUNT_KINDS, type Account, type AccountKind } from "@/lib/buckets";
+import { HOME_SYMBOL } from "@/lib/money";
 
 /**
  * Manage the real accounts money sits in (name, kind, balance). Buckets are
@@ -90,7 +91,7 @@ export default function AccountsEditor({
                   ))}
                 </select>
                 <div className="flex flex-1 items-center rounded-lg border border-border bg-surface px-3 transition-colors focus-within:border-emerald">
-                  <span className="text-sm text-muted">£</span>
+                  <span className="text-sm text-muted">{HOME_SYMBOL}</span>
                   <input
                     inputMode="numeric"
                     value={a.balance ? String(a.balance) : ""}

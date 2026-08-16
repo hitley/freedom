@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { addMonths, simulate, type BucketsState } from "@/lib/buckets";
+import { HOME_SYMBOL } from "@/lib/money";
 
 /** Distinct line colours; theme only ships emerald/gold, so the rest are fixed hues. */
 const CHART_COLORS = [
@@ -28,7 +29,7 @@ const PLOT_H = H - PAD.top - PAD.bottom;
 
 function money(n: number): string {
   const abs = Math.abs(n);
-  const s = abs >= 1_000 ? `£${Math.round(abs / 100) / 10}k` : `£${Math.round(abs)}`;
+  const s = abs >= 1_000 ? `${HOME_SYMBOL}${Math.round(abs / 100) / 10}k` : `${HOME_SYMBOL}${Math.round(abs)}`;
   return n < 0 ? `-${s}` : s;
 }
 
@@ -234,7 +235,7 @@ export default function BucketsTimeline({
 
       {timeline.anyShortfall && (
         <p className="mt-3 text-xs text-gold">
-          ⚠️ A bucket dips below £0 within this window — a planned spend it isn&apos;t
+          ⚠️ A bucket dips below {HOME_SYMBOL}0 within this window — a planned spend it isn&apos;t
           on track to cover.
         </p>
       )}

@@ -9,9 +9,10 @@ import {
 } from "@/lib/spending";
 import type { InboxItem } from "@/lib/inbox";
 
-const gbp2 = new Intl.NumberFormat("en-GB", {
+const money2 = new Intl.NumberFormat("en-GB", {
   style: "currency",
-  currency: "GBP",
+  currency: "AUD",
+  currencyDisplay: "narrowSymbol",
   maximumFractionDigits: 2,
 });
 
@@ -139,7 +140,7 @@ export default function ReviewModal({
                   }`}
                 >
                   {row.tx.direction === "out" ? "−" : "+"}
-                  {gbp2.format(row.tx.amount)}
+                  {money2.format(row.tx.amount)}
                 </span>
 
                 <button
@@ -158,7 +159,7 @@ export default function ReviewModal({
         {/* footer */}
         <div className="flex items-center justify-between gap-3 border-t border-border p-4">
           <span className="text-xs text-muted">
-            {kept.length} to add · {gbp2.format(keptSpend)} spend
+            {kept.length} to add · {money2.format(keptSpend)} spend
           </span>
           <div className="flex items-center gap-2">
             <button

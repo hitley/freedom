@@ -16,9 +16,10 @@ import DetailShell from "../detail/DetailShell";
 import ProjectionChart, { HorizonSelector } from "../detail/ProjectionChart";
 import { Slider, Stat, compactMoney } from "../detail/primitives";
 
-const gbp0 = new Intl.NumberFormat("en-GB", {
+const money0 = new Intl.NumberFormat("en-GB", {
   style: "currency",
-  currency: "GBP",
+  currency: "AUD",
+  currencyDisplay: "narrowSymbol",
   maximumFractionDigits: 0,
 });
 
@@ -98,7 +99,7 @@ export default function BucketDetail({
     const delta = value - v.balance;
     const lines = [
       timeline.dates[idx].toLocaleDateString("en-GB", { month: "short", year: "numeric" }),
-      gbp0.format(value),
+      money0.format(value),
     ];
     if (bucket.target) {
       lines.push(`${Math.round((value / bucket.target) * 100)}% of goal`);
@@ -114,17 +115,17 @@ export default function BucketDetail({
     <DetailShell glyph={bucket.glyph} title={bucket.name} subtitle="Purpose bucket" onEdit={onEdit} onClose={onClose}>
       {/* headline stats */}
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <Stat label="Balance today" value={gbp0.format(v.balance)} />
+        <Stat label="Balance today" value={money0.format(v.balance)} />
         <Stat
           label={`Projected in ${months / 12 >= 1 ? `${months / 12} year${months / 12 > 1 ? "s" : ""}` : `${months} months`}`}
-          value={gbp0.format(projectedEnd)}
+          value={money0.format(projectedEnd)}
           accent="text-emerald"
           hint={`${projectedEnd - v.balance >= 0 ? "+" : ""}${compactMoney(projectedEnd - v.balance)} from scheduled flows`}
         />
         {bucket.target ? (
           <Stat
             label="Goal"
-            value={gbp0.format(bucket.target)}
+            value={money0.format(bucket.target)}
             accent="text-gold"
             hint={
               goalReached
@@ -161,7 +162,7 @@ export default function BucketDetail({
           <Slider
             label="Extra monthly contribution"
             value={extraMonthly}
-            display={extraMonthly > 0 ? `+${gbp0.format(extraMonthly)}` : "—"}
+            display={extraMonthly > 0 ? `+${money0.format(extraMonthly)}` : "—"}
             min={0}
             max={3000}
             step={25}

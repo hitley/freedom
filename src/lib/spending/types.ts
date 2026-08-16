@@ -242,7 +242,7 @@ export interface ReconcileView {
 /**
  * A *suggested* (never auto-applied) actual transaction that could settle an expected
  * occurrence — surfaced for the user to confirm. Ranked by `score` (lower = better fit);
- * `dayDelta` / `amountDelta` explain the fit so the UI can show "2 days early, £3 over".
+ * `dayDelta` / `amountDelta` explain the fit so the UI can show "2 days early, $3 over".
  */
 export interface MatchCandidate {
   transaction: Transaction;

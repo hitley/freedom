@@ -4,15 +4,17 @@
  * so every detail view reads the same. Pure presentational — no business logic.
  */
 
-/** A compact money label for chart axes/tooltips: £950, £1.2k, £3.4m. */
+import { HOME_SYMBOL } from "@/lib/money";
+
+/** A compact money label for chart axes/tooltips: A$950, A$1.2k, A$3.4m. */
 export function compactMoney(n: number): string {
   const abs = Math.abs(n);
   const s =
     abs >= 1_000_000
-      ? `£${Math.round(abs / 100_000) / 10}m`
+      ? `${HOME_SYMBOL}${Math.round(abs / 100_000) / 10}m`
       : abs >= 1_000
-        ? `£${Math.round(abs / 100) / 10}k`
-        : `£${Math.round(abs)}`;
+        ? `${HOME_SYMBOL}${Math.round(abs / 100) / 10}k`
+        : `${HOME_SYMBOL}${Math.round(abs)}`;
   return n < 0 ? `-${s}` : s;
 }
 

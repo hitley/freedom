@@ -29,9 +29,10 @@ const AS_OF = [
 const dayLabel = (d: Date) =>
   d.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
-const gbp0 = new Intl.NumberFormat("en-GB", {
+const money0 = new Intl.NumberFormat("en-GB", {
   style: "currency",
-  currency: "GBP",
+  currency: "AUD",
+  currencyDisplay: "narrowSymbol",
   maximumFractionDigits: 0,
 });
 
@@ -133,15 +134,15 @@ export default function BucketsPanel({
     <section>
       {/* summary */}
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <Stat label="Total tracked" value={gbp0.format(summary.totalBalance)} />
+        <Stat label="Total tracked" value={money0.format(summary.totalBalance)} />
         <Stat
           label="Given a purpose"
-          value={gbp0.format(summary.totalAllocated)}
+          value={money0.format(summary.totalAllocated)}
           accent="text-emerald"
         />
         <Stat
           label="Unallocated"
-          value={gbp0.format(summary.totalUnallocated)}
+          value={money0.format(summary.totalUnallocated)}
           accent={summary.totalUnallocated > 0 ? "text-gold" : "text-muted"}
           hint="No purpose assigned yet"
         />
@@ -220,7 +221,7 @@ export default function BucketsPanel({
                 </span>
               </div>
               <div className="mt-3 font-display text-2xl font-bold">
-                {gbp0.format(balance)}
+                {money0.format(balance)}
               </div>
               <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-border">
                 <div
@@ -232,15 +233,15 @@ export default function BucketsPanel({
               </div>
               <div className="mt-2 flex justify-between text-xs">
                 <span className="text-muted">
-                  {gbp0.format(allocated)} allocated
+                  {money0.format(allocated)} allocated
                 </span>
                 <span className={unallocated !== 0 ? "text-gold" : "text-muted"}>
-                  {gbp0.format(unallocated)} free
+                  {money0.format(unallocated)} free
                 </span>
               </div>
               {asOfMonths > 0 && (
                 <div className="mt-1 text-[11px] text-muted/70">
-                  {gbp0.format(account.balance)} today
+                  {money0.format(account.balance)} today
                 </div>
               )}
             </div>
@@ -298,8 +299,8 @@ export default function BucketsPanel({
                       </div>
                       <div className="mt-0.5 text-xs text-muted">
                         {bucket.target
-                          ? `${gbp0.format(v.balance)} of ${gbp0.format(bucket.target)}`
-                          : gbp0.format(v.balance)}
+                          ? `${money0.format(v.balance)} of ${money0.format(bucket.target)}`
+                          : money0.format(v.balance)}
                       </div>
                     </div>
                   </div>

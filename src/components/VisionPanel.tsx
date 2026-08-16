@@ -2,9 +2,10 @@
 
 import { MOTIVATIONS, fireStyleMeta, type FreedomVision } from "@/lib/vision";
 
-const gbp0 = new Intl.NumberFormat("en-GB", {
+const money0 = new Intl.NumberFormat("en-GB", {
   style: "currency",
-  currency: "GBP",
+  currency: "AUD",
+  currencyDisplay: "narrowSymbol",
   maximumFractionDigits: 0,
 });
 
@@ -67,7 +68,7 @@ export default function VisionPanel({
           <span className="text-foreground">{fireStyleMeta(vision.fireStyle).label}</span> freedom
         </span>
         <span className="text-muted">
-          <span className="text-gold">{gbp0.format(vision.annualSpend)}</span> / year
+          <span className="text-gold">{money0.format(vision.annualSpend)}</span> / year
         </span>
         {vision.targetAge && (
           <span className="text-muted">

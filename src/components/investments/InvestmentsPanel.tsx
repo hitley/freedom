@@ -2,28 +2,28 @@
 
 import { useMemo, useState } from "react";
 import {
+  convertHolding,
+  convertToHome,
   DIVIDEND_FREQS,
   HOLDING_KINDS,
+  holdingValue,
   holdingView,
   summarise,
   type Holding,
   type InvestmentsState,
   type Quote,
 } from "@/lib/investments";
+import { formatMoney, HOME_CURRENCY } from "@/lib/money";
+import type { FxState } from "./useFxRates";
 import HoldingEditor from "./HoldingEditor";
 import HoldingDetail from "./HoldingDetail";
 
-const gbp0 = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP",
-  maximumFractionDigits: 0,
-});
+const money0 = (n: number) => formatMoney(n, HOME_CURRENCY, 0);
+const money2 = (n: number) => formatMoney(n, HOME_CURRENCY, 2);
 
-const gbp2 = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP",
-  maximumFractionDigits: 2,
-});
+/** The foreign currency a holding is recorded in, or null when it's home-currency. */
+const foreignCurrency = (h: Holding) =>
+  h.currency && h.currency.toUpperCase() !== HOME_CURRENCY ? h.currency.toUpperCase() : null;
 
 const kindMeta = (id: string) => HOLDING_KINDS.find((k) => k.id === id);
 
@@ -50,19 +50,29 @@ export default function InvestmentsPanel({
   state,
   onChange,
   quotes,
+  fx,
 }: {
   state: InvestmentsState;
   onChange: (next: InvestmentsState) => void;
   /** Live quotes by ticker; empty under the manual provider. */
   quotes?: Record<string, Quote>;
+  /** Live FX rates + status; foreign-currency holdings convert to the home currency. */
+  fx?: FxState;
 }) {
   // null = closed; a Holding = editing/adding that holding.
   const [editing, setEditing] = useState<Holding | null>(null);
   // null = overview; a holding id = its maximised detail view.
   const [detailId, setDetailId] = useState<string | null>(null);
 
-  const summary = useMemo(() => summarise(state, quotes), [state, quotes]);
+  const rates = fx?.rates;
+  // Everything totalled/charted uses home-currency amounts; editing uses the raw
+  // (possibly foreign) state so the entered figures round-trip untouched.
+  const homeState = useMemo(() => convertToHome(state, rates), [state, rates]);
+  const summary = useMemo(() => summarise(homeState, quotes), [homeState, quotes]);
   const growth = summary.projectedValue1y - summary.totalValue;
+  const hasForeign = state.holdings.some((h) => foreignCurrency(h));
+  // A holding's value in its own currency (before conversion), for the native subtext.
+  const rawValue = (h: Holding) => holdingValue(h, quotes);
 
   const saveHolding = (holding: Holding) => {
     const exists = state.holdings.some((h) => h.id === holding.id);
@@ -86,7 +96,7 @@ export default function InvestmentsPanel({
     return (
       <>
         <HoldingDetail
-          holding={detailHolding}
+          holding={convertHolding(detailHolding, rates)}
           quotes={quotes}
           onEdit={() => setEditing(detailHolding)}
           onClose={() => setDetailId(null)}
@@ -108,24 +118,27 @@ export default function InvestmentsPanel({
     <section>
       {/* summary */}
       <div className="mb-6 grid gap-3 sm:grid-cols-3">
-        <Stat label="Portfolio value" value={gbp0.format(summary.totalValue)} />
+        <Stat label="Portfolio value" value={money0(summary.totalValue)} />
         <Stat
           label="Projected in 1 year"
-          value={gbp0.format(summary.projectedValue1y)}
+          value={money0(summary.projectedValue1y)}
           accent="text-emerald"
-          hint={`${growth >= 0 ? "+" : ""}${gbp0.format(growth)} from growth & contributions`}
+          hint={`${growth >= 0 ? "+" : ""}${money0(growth)} from growth & contributions`}
         />
         <Stat
           label="Contributions / yr"
-          value={gbp0.format(summary.annualContributions)}
+          value={money0(summary.annualContributions)}
           accent="text-gold"
           hint={
             summary.annualDividends > 0
-              ? `+${gbp0.format(summary.annualDividends)} dividends reinvested`
+              ? `+${money0(summary.annualDividends)} dividends reinvested`
               : undefined
           }
         />
       </div>
+
+      {/* FX status — shown only when a holding is in a foreign currency */}
+      {hasForeign && <FxNote fx={fx} />}
 
       {/* breakdown by kind */}
       {summary.totalValue > 0 && (
@@ -139,7 +152,7 @@ export default function InvestmentsPanel({
                 key={k.kind}
                 className={KIND_BAR[i % KIND_BAR.length]}
                 style={{ width: `${(k.value / summary.totalValue) * 100}%` }}
-                title={`${kindMeta(k.kind)?.label}: ${gbp0.format(k.value)}`}
+                title={`${kindMeta(k.kind)?.label}: ${money0(k.value)}`}
               />
             ))}
           </div>
@@ -150,7 +163,7 @@ export default function InvestmentsPanel({
                   className={`inline-block h-2.5 w-2.5 rounded-sm ${KIND_DOT[i % KIND_DOT.length]}`}
                 />
                 <span className="text-muted">{kindMeta(k.kind)?.label}</span>
-                <span className="text-foreground">{gbp0.format(k.value)}</span>
+                <span className="text-foreground">{money0(k.value)}</span>
               </div>
             ))}
           </div>
@@ -178,9 +191,10 @@ export default function InvestmentsPanel({
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {state.holdings.map((holding) => {
-            const v = holdingView(holding, quotes);
+            const v = holdingView(convertHolding(holding, rates), quotes);
             const meta = kindMeta(holding.kind);
             const freq = holding.contribution?.recurrence.freq;
+            const fc = foreignCurrency(holding);
             return (
               <div
                 key={holding.id}
@@ -204,7 +218,7 @@ export default function InvestmentsPanel({
                       </div>
                       <div className="mt-0.5 text-xs text-muted">
                         {holding.valuation === "market"
-                          ? `${formatUnits(holding.units ?? 0)} @ ${gbp2.format(v.price ?? 0)}${v.priced ? " · live" : ""}`
+                          ? `${formatUnits(holding.units ?? 0)} @ ${money2(v.price ?? 0)}${v.priced ? " · live" : ""}`
                           : meta?.label}
                       </div>
                     </div>
@@ -222,13 +236,22 @@ export default function InvestmentsPanel({
                 </div>
 
                 <div className="mt-4 font-display text-2xl font-bold">
-                  {gbp0.format(v.value)}
+                  {money0(v.value)}
                 </div>
+                {fc && (
+                  <div className="mt-1 text-xs text-muted">
+                    {formatMoney(rawValue(holding), fc, 0)} {fc}
+                    {rates?.[fc]
+                      ? ` · 1 ${fc} = ${money2(rates[fc])}`
+                      : " · rate pending"}
+                  </div>
+                )}
 
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {v.annualContribution > 0 && freq && (
                     <Chip>
-                      {gbp0.format(holding.contribution!.amount)} {freqLabel(freq)}
+                      {formatMoney(holding.contribution!.amount, fc ?? HOME_CURRENCY, 0)}{" "}
+                      {freqLabel(freq)}
                     </Chip>
                   )}
                   {holding.drp && (
@@ -289,6 +312,33 @@ function Chip({
     >
       {children}
     </span>
+  );
+}
+
+/** A one-line FX status: the rate(s) in use, when they're from, and offline state. */
+function FxNote({ fx }: { fx?: FxState }) {
+  const rates = fx?.rates ?? {};
+  const pairs = Object.entries(rates);
+  return (
+    <div className="mb-6 flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl border border-border bg-surface-2 px-4 py-2 text-xs text-muted">
+      <span>Converted to {HOME_CURRENCY} at</span>
+      {pairs.length > 0 ? (
+        pairs.map(([cur, rate]) => (
+          <span key={cur} className="text-foreground">
+            1 {cur} = {money2(rate)}
+          </span>
+        ))
+      ) : (
+        <span className="text-foreground">the latest rate…</span>
+      )}
+      {fx?.asOf && !fx.offline && <span>· as of {fx.asOf}</span>}
+      {fx?.offline && (
+        <span className="rounded-full border border-gold/40 bg-gold/10 px-2 py-0.5 text-gold">
+          offline · using last saved rate
+        </span>
+      )}
+      {fx?.loading && <span>· refreshing…</span>}
+    </div>
   );
 }
 

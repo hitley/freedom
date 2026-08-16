@@ -1,4 +1,5 @@
 import type { ProjectionPoint } from "@/lib/finance";
+import { HOME_SYMBOL } from "@/lib/money";
 
 interface Props {
   series: ProjectionPoint[];
@@ -14,9 +15,9 @@ const PLOT_W = W - PAD.left - PAD.right;
 const PLOT_H = H - PAD.top - PAD.bottom;
 
 function money(n: number): string {
-  if (n >= 1_000_000) return `£${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 2)}m`;
-  if (n >= 1_000) return `£${Math.round(n / 1_000)}k`;
-  return `£${Math.round(n)}`;
+  if (n >= 1_000_000) return `${HOME_SYMBOL}${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 2)}m`;
+  if (n >= 1_000) return `${HOME_SYMBOL}${Math.round(n / 1_000)}k`;
+  return `${HOME_SYMBOL}${Math.round(n)}`;
 }
 
 /**

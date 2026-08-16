@@ -4,7 +4,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { project, type FinancialInputs } from "@/lib/finance";
 import { fireStyleMeta, type FreedomVision } from "@/lib/vision";
 import type { BucketsState } from "@/lib/buckets";
-import { summarise as summariseInvestments, type InvestmentsState } from "@/lib/investments";
+import {
+  convertToHome,
+  summarise as summariseInvestments,
+  type InvestmentsState,
+} from "@/lib/investments";
+import { useFxRates } from "./investments/useFxRates";
 import type { SpendingState, Transaction } from "@/lib/spending";
 import type { InboxItem, NewInboxItemInput } from "@/lib/inbox";
 import VisionOnboarding from "./onboarding/VisionOnboarding";
@@ -347,13 +352,27 @@ export default function FreedomApp({
   const [inbox, setInbox] = useState<InboxItem[]>(initialInbox);
   const [saveState, setSaveState] = useState<SaveState>("idle");
 
+  // Foreign-currency holdings (e.g. a UK pension in GBP) are converted into the home
+  // currency at a live rate before anything totals them, so the portfolio and the
+  // projection stay in one currency. Rates come from a cache-first live hook.
+  const fx = useFxRates(
+    useMemo(
+      () => investments.holdings.map((h) => h.currency ?? "").filter(Boolean),
+      [investments],
+    ),
+  );
+  const investmentsInHome = useMemo(
+    () => convertToHome(investments, fx.rates),
+    [investments, fx.rates],
+  );
+
   // "Invested today" and "Saved per month" are not edited on the trajectory — they
   // are the real figures tracked on the Investments page (portfolio value + the
   // monthly equivalent of the holdings' annual contributions). Derive them and feed
   // the engine the merged inputs so the projection reflects the live portfolio.
   const investmentsSummary = useMemo(
-    () => summariseInvestments(investments),
-    [investments],
+    () => summariseInvestments(investmentsInHome),
+    [investmentsInHome],
   );
   const effectiveInputs = useMemo<FinancialInputs>(
     () => ({
@@ -535,7 +554,7 @@ export default function FreedomApp({
       ) : view === "buckets" ? (
         <BucketsPanel state={buckets} onChange={setBuckets} />
       ) : view === "investments" ? (
-        <InvestmentsPanel state={investments} onChange={setInvestments} />
+        <InvestmentsPanel state={investments} onChange={setInvestments} fx={fx} />
       ) : view === "spending" ? (
         <SpendingPanel
           state={spending}

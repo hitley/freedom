@@ -1,20 +1,17 @@
 "use client";
 
 import { type FinancialInputs, type Projection } from "@/lib/finance";
+import { formatMoney, HOME_CURRENCY, HOME_SYMBOL } from "@/lib/money";
 import ProjectionChart from "./ProjectionChart";
 
 const START_YEAR = new Date().getFullYear();
 
-const gbp0 = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP",
-  maximumFractionDigits: 0,
-});
+const gbp0 = (n: number) => formatMoney(n, HOME_CURRENCY, 0);
 
 function moneyShort(n: number): string {
-  if (n >= 1_000_000) return `£${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 2)}m`;
-  if (n >= 1_000) return `£${Math.round(n / 1_000)}k`;
-  return gbp0.format(n);
+  if (n >= 1_000_000) return `${HOME_SYMBOL}${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 2)}m`;
+  if (n >= 1_000) return `${HOME_SYMBOL}${Math.round(n / 1_000)}k`;
+  return gbp0(n);
 }
 
 export default function FinancialDashboard({
@@ -106,7 +103,7 @@ export default function FinancialDashboard({
           />
           <Tracked
             label="Saved per month"
-            display={gbp0.format(inputs.monthlyContribution)}
+            display={gbp0(inputs.monthlyContribution)}
             source="Investments"
             onSource={onViewInvestments}
           />
@@ -124,7 +121,7 @@ export default function FinancialDashboard({
         <ControlGroup title="Goal" hint="The life you're funding">
           <Dial
             label="Annual spend"
-            display={gbp0.format(inputs.annualSpend)}
+            display={gbp0(inputs.annualSpend)}
             value={inputs.annualSpend}
             min={15_000}
             max={150_000}
@@ -133,7 +130,7 @@ export default function FinancialDashboard({
           />
           <Dial
             label="Other annual income"
-            display={gbp0.format(inputs.ongoingAnnualIncome ?? 0)}
+            display={gbp0(inputs.ongoingAnnualIncome ?? 0)}
             value={inputs.ongoingAnnualIncome ?? 0}
             min={0}
             max={60_000}

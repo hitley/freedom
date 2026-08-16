@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   annualContribution,
   annualDividend,
+  convertHolding,
+  convertToHome,
   holdingHistory,
   holdingPrice,
+  holdingRate,
   holdingValue,
   holdingView,
   investmentsStateSchema,
@@ -206,5 +209,88 @@ describe("investmentsStateSchema", () => {
   it("rejects a balance holding missing its balance", () => {
     const bad = { holdings: [{ id: "x", name: "Bad", kind: "super", valuation: "balance" }] };
     expect(investmentsStateSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it("accepts an optional currency and upper-cases it", () => {
+    const parsed = investmentsStateSchema.safeParse({
+      holdings: [
+        { id: "p", name: "UK pension", kind: "super", valuation: "balance", balance: 100_000, currency: "gbp" },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data.holdings[0].currency).toBe("GBP");
+  });
+
+  it("rejects a malformed currency code", () => {
+    const bad = {
+      holdings: [
+        { id: "p", name: "Bad", kind: "super", valuation: "balance", balance: 1, currency: "pounds" },
+      ],
+    };
+    expect(investmentsStateSchema.safeParse(bad).success).toBe(false);
+  });
+});
+
+describe("currency conversion", () => {
+  // A UK pension recorded in GBP, valued at £100k with £1,000/mo paid in.
+  const pension: Holding = {
+    id: "uk",
+    name: "UK pension",
+    kind: "super",
+    valuation: "balance",
+    balance: 100_000,
+    currency: "GBP",
+    expectedReturnPct: 5,
+    contribution: {
+      amount: 1_000,
+      recurrence: { freq: "monthly", startDate: "2026-06-15", dayOfMonth: 15 },
+    },
+  };
+  const rates = { GBP: 1.95 }; // 1 GBP = 1.95 AUD
+
+  it("reports the rate, defaulting home/unrated holdings to 1", () => {
+    expect(holdingRate(pension, rates)).toBe(1.95);
+    expect(holdingRate({ ...pension, currency: "AUD" }, rates)).toBe(1);
+    expect(holdingRate({ ...pension, currency: undefined }, rates)).toBe(1);
+    expect(holdingRate(pension, undefined)).toBe(1); // offline before first fetch
+  });
+
+  it("scales every monetary field into the home currency and clears the code", () => {
+    const home = convertHolding(pension, rates);
+    expect(home.currency).toBeUndefined();
+    expect(home.balance).toBe(195_000);
+    expect(home.contribution?.amount).toBe(1_950);
+    expect(home.expectedReturnPct).toBe(5); // percentages are currency-independent
+    expect(holdingValue(home)).toBe(195_000);
+  });
+
+  it("leaves home-currency holdings untouched (same reference)", () => {
+    const aud: Holding = { id: "a", name: "Super", kind: "super", valuation: "balance", balance: 50_000 };
+    expect(convertHolding(aud, rates)).toBe(aud);
+  });
+
+  it("converts market price × units so value moves with the rate", () => {
+    const shares: Holding = {
+      id: "lse",
+      name: "FTSE ETF",
+      kind: "etf",
+      valuation: "market",
+      units: 100,
+      pricePerUnit: 50,
+      currency: "GBP",
+    };
+    expect(holdingValue(shares)).toBe(5_000); // £5,000 native
+    expect(holdingValue(convertHolding(shares, rates))).toBe(9_750); // A$9,750
+  });
+
+  it("totals a mixed-currency portfolio in the home currency", () => {
+    const aud: Holding = { id: "a", name: "Super", kind: "super", valuation: "balance", balance: 100_000 };
+    const converted = convertToHome({ holdings: [aud, pension] }, rates);
+    expect(summarise(converted).totalValue).toBe(295_000); // 100k AUD + 195k converted
+  });
+
+  it("without rates, passes the state through unchanged", () => {
+    const s = { holdings: [pension] };
+    expect(convertToHome(s, undefined)).toBe(s);
   });
 });

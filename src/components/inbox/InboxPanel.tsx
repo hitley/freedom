@@ -16,9 +16,10 @@ import {
 } from "@/lib/spending";
 import ReviewModal from "./ReviewModal";
 
-const gbp0 = new Intl.NumberFormat("en-GB", {
+const money0 = new Intl.NumberFormat("en-GB", {
   style: "currency",
-  currency: "GBP",
+  currency: "AUD",
+  currencyDisplay: "narrowSymbol",
   maximumFractionDigits: 0,
 });
 
@@ -177,7 +178,7 @@ export default function InboxPanel({
           placeholder={
             source === "csv"
               ? "…or paste CSV rows here:\nDate,Description,Amount\n2026-05-01,Tesco,-42.10"
-              : "e.g. Paid £92 to Octopus for May gas & electric"
+              : "e.g. Paid $92 to Octopus for May gas & electric"
           }
           className="mt-3 w-full rounded-xl border border-border bg-surface px-4 py-3 font-mono text-xs leading-relaxed outline-none transition-colors placeholder:text-muted/40 focus:border-emerald"
         />
@@ -291,7 +292,7 @@ export default function InboxPanel({
                     </span>
                     <span className="text-muted">
                       {" "}
-                      ({gbp0.format(spendTotal(proposed))} spend
+                      ({money0.format(spendTotal(proposed))} spend
                       {proposed.duplicateCount > 0 && `, ${proposed.duplicateCount} duplicate${proposed.duplicateCount === 1 ? "" : "s"} skipped`}
                       {proposed.skipped > 0 && `, ${proposed.skipped} row${proposed.skipped === 1 ? "" : "s"} unread`})
                     </span>

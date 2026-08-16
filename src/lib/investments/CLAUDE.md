@@ -24,5 +24,23 @@ price; pass a `quotes` map keyed by ticker to override). Investments are deliber
 **independent of the projection engine** for now (feeding totals into `currentInvested` is a
 future step). `investmentsStateSchema` is the zod boundary.
 
+**Foreign-currency holdings.** The app totals everything in a single **home currency**
+(`HOME_CURRENCY` in `@/lib/money` — currently `AUD`). A holding may instead be recorded in its
+own currency via an optional `Holding.currency` (ISO-4217, e.g. a UK pension in `"GBP"`); its
+stored amounts (`balance` / `pricePerUnit` / `contribution` / `history`) stay in that currency
+and are converted to the home currency **for display and aggregation only**. `convertToHome`
+(and per-holding `convertHolding` / `holdingRate`) is the pure adapter: it scales every
+monetary field by the FX rate (home units per 1 foreign unit) and clears `currency`, so the
+rest of the math (`summarise`, `simulate`, the Trajectory sync) never sees a foreign amount.
+A holding with no `currency` (or one equal to home) passes through unchanged — so existing data
+and the whole pipeline are untouched. Rates mirror the price seam: the `FxProvider` shape +
+`manualFxProvider` default, with the **live** source being the `useFxRates` hook
+(`src/components/investments/useFxRates.ts`) — cache-first from `localStorage` (instant +
+offline), then a background fetch from `api.frankfurter.dev` (ECB daily rates, no key; the
+request carries only currency codes) that re-renders converted figures when the rate moves.
+The editor captures a holding in its own currency; the panel shows the converted home value
+with a native subtext and a one-line rate/as-of/offline indicator. **Note:** the amounts stay
+in native currency at rest, so the portfolio re-values automatically as FX drifts.
+
 See `src/lib/CLAUDE.md` for shared conventions; `docs/architecture/components/investments.md`
 for the generated structural view.

@@ -12,13 +12,14 @@ import {
   type Holding,
   type Quote,
 } from "@/lib/investments";
+import { HOME_CURRENCY } from "@/lib/money";
 import DetailShell from "../detail/DetailShell";
 import ProjectionChart, { HorizonSelector } from "../detail/ProjectionChart";
 import { Slider, Stat, compactMoney } from "../detail/primitives";
 
 const gbp0 = new Intl.NumberFormat("en-GB", {
   style: "currency",
-  currency: "GBP",
+  currency: HOME_CURRENCY,
   maximumFractionDigits: 0,
 });
 

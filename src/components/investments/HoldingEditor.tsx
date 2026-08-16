@@ -21,12 +21,12 @@ import {
   type HoldingSnapshot,
   type Valuation,
 } from "@/lib/investments";
+import { formatMoney, HOME_CURRENCY } from "@/lib/money";
 
-const gbp0 = new Intl.NumberFormat("en-GB", {
-  style: "currency",
-  currency: "GBP",
-  maximumFractionDigits: 0,
-});
+/** Currencies offerable for a holding. Home first; the rest are common expat cases. */
+const CURRENCIES = [HOME_CURRENCY, "GBP", "USD", "EUR", "NZD", "JPY", "SGD", "HKD"].filter(
+  (c, i, a) => a.indexOf(c) === i,
+);
 
 const todayISO = () => toISO(new Date());
 
@@ -67,6 +67,9 @@ export default function HoldingEditor({
   const [name, setName] = useState(holding.name);
   const [kind, setKind] = useState<HoldingKind>(holding.kind);
   const [valuation, setValuation] = useState<Valuation>(holding.valuation);
+  const [currency, setCurrency] = useState(
+    holding.currency?.toUpperCase() ?? HOME_CURRENCY,
+  );
   const [ticker, setTicker] = useState(holding.ticker ?? "");
   const [units, setUnits] = useState(holding.units ? String(holding.units) : "");
   const [price, setPrice] = useState(
@@ -114,6 +117,8 @@ export default function HoldingEditor({
       name: name.trim(),
       kind,
       valuation,
+      // Home currency is the implicit default — only store a currency when it differs.
+      currency: currency !== HOME_CURRENCY ? currency : undefined,
       expectedReturnPct: num(growth) > 0 ? num(growth) : undefined,
       contribution: contribution && contribution.amount > 0 ? contribution : undefined,
       drp: drp && drp.annualYieldPct > 0 ? drp : undefined,
@@ -171,6 +176,25 @@ export default function HoldingEditor({
           placeholder={valuation === "market" ? "Vanguard VAS" : "AustralianSuper"}
           className="mt-4 w-full rounded-xl border border-border bg-surface px-4 py-3 font-display text-lg outline-none transition-colors placeholder:text-muted/50 focus:border-emerald"
         />
+
+        {/* currency */}
+        <div className="mt-4">
+          <Field label="Currency">
+            <div className="flex flex-wrap items-center gap-2">
+              <Select
+                value={currency}
+                onChange={setCurrency}
+                options={CURRENCIES.map((c) => ({ value: c, label: c }))}
+              />
+              {currency !== HOME_CURRENCY && (
+                <span className="text-xs text-muted">
+                  entered in {currency}; shown in your portfolio as {HOME_CURRENCY} at
+                  today&apos;s rate
+                </span>
+              )}
+            </div>
+          </Field>
+        </div>
 
         {/* valuation toggle */}
         <div className="mt-4">
@@ -240,7 +264,7 @@ export default function HoldingEditor({
         <div className="mt-3 rounded-xl border border-border bg-surface-2 px-4 py-2.5 text-sm">
           <span className="text-muted">Current value</span>
           <span className="ml-2 font-display font-semibold">
-            {gbp0.format(previewValue)}
+            {formatMoney(previewValue, currency, 0)}
           </span>
           {valuation === "market" && (
             <span className="ml-2 text-xs text-muted">
@@ -300,7 +324,7 @@ export default function HoldingEditor({
           }
         >
           {history.length > 0 && (
-            <HistoryRows history={history} onChange={setHistory} />
+            <HistoryRows history={history} onChange={setHistory} currency={currency} />
           )}
         </Toggle>
 
@@ -359,9 +383,11 @@ const cleanHistory = (history: HoldingSnapshot[]): HoldingSnapshot[] =>
 function HistoryRows({
   history,
   onChange,
+  currency,
 }: {
   history: HoldingSnapshot[];
   onChange: (next: HoldingSnapshot[]) => void;
+  currency: string;
 }) {
   const setRow = (i: number, patch: Partial<HoldingSnapshot>) =>
     onChange(history.map((s, j) => (j === i ? { ...s, ...patch } : s)));
@@ -423,7 +449,7 @@ function HistoryRows({
                 growth this period:{" "}
                 <span className={p.growth >= 0 ? "text-emerald" : "text-gold"}>
                   {p.growth >= 0 ? "+" : ""}
-                  {gbp0.format(p.growth)}
+                  {formatMoney(p.growth, currency, 0)}
                   {p.growthPct !== null && ` (${p.growthPct >= 0 ? "+" : ""}${p.growthPct.toFixed(1)}%)`}
                 </span>
               </div>

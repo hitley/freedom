@@ -76,6 +76,14 @@ export interface Holding {
   name: string;
   kind: HoldingKind;
   valuation: Valuation;
+  /**
+   * ISO 4217 code the holding's stored amounts (`balance` / `pricePerUnit` /
+   * `contribution` / `history`) are denominated in, e.g. "GBP" for a UK pension.
+   * Absent (or equal to the home currency) means the amounts are already in the
+   * home currency and need no conversion. `convertToHome` (see `index.ts`) turns a
+   * foreign-currency holding into a home-currency one using a live FX rate.
+   */
+  currency?: string;
   /** `market` only: the symbol a live price feed would resolve (e.g. "VAS"). */
   ticker?: string;
   /** `market` only: units/shares held. */
@@ -115,6 +123,33 @@ export interface Quote {
 /** Resolves live prices for a set of tickers. Keyed by ticker (upper-case). */
 export interface PriceProvider {
   quotes(tickers: string[]): Promise<Record<string, Quote>>;
+}
+
+/* ----------------------------------------------------------------------------
+ * FX seam. A holding recorded in a foreign currency (e.g. a UK pension in GBP)
+ * is converted into the home currency for display and aggregation. Rates are a
+ * map keyed by the *foreign* currency code, valued as **home-currency units per 1
+ * unit of that currency** (so GBP→AUD at 1.95 is `{ GBP: 1.95 }`). Missing/home
+ * currencies convert 1:1. Live today via `useFxRates`; the provider shape mirrors
+ * `PriceProvider` so a server-side feed can slot in later.
+ * ------------------------------------------------------------------------- */
+
+/** Home-currency-per-unit rates, keyed by foreign currency code (upper-case). */
+export type FxRates = Record<string, number>;
+
+/** A resolved FX rate for one currency pair. `asOf` is a date-only ISO string. */
+export interface FxRate {
+  /** The foreign currency this converts *from*, e.g. "GBP". */
+  currency: string;
+  /** Home-currency units per 1 unit of `currency`. */
+  rate: number;
+  /** The date the rate is quoted for (ECB publishes daily). */
+  asOf: string;
+}
+
+/** Resolves home-currency rates for a set of foreign currencies. */
+export interface FxProvider {
+  rates(currencies: string[], home: string): Promise<Record<string, FxRate>>;
 }
 
 /** A holding enriched with the today-snapshot figures the UI needs. */

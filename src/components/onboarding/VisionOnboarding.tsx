@@ -9,9 +9,10 @@ import {
   type FreedomVision,
 } from "@/lib/vision";
 
-const gbp0 = new Intl.NumberFormat("en-GB", {
+const money0 = new Intl.NumberFormat("en-GB", {
   style: "currency",
-  currency: "GBP",
+  currency: "AUD",
+  currencyDisplay: "narrowSymbol",
   maximumFractionDigits: 0,
 });
 
@@ -168,7 +169,7 @@ export default function VisionOnboarding({
               <div className="mb-2 flex items-baseline justify-between">
                 <span className="text-sm text-muted">Target annual spend</span>
                 <span className="font-display text-lg font-semibold text-gold">
-                  {gbp0.format(draft.annualSpend)}
+                  {money0.format(draft.annualSpend)}
                 </span>
               </div>
               <input
@@ -233,7 +234,7 @@ export default function VisionOnboarding({
               )}
               <div className="mt-5 grid grid-cols-3 gap-4 border-t border-border pt-5">
                 <Fact label="Style" value={fireStyleMeta(draft.fireStyle).label} />
-                <Fact label="Annual spend" value={gbp0.format(draft.annualSpend)} accent="text-gold" />
+                <Fact label="Annual spend" value={money0.format(draft.annualSpend)} accent="text-gold" />
                 <Fact label="Free by" value={draft.targetAge ? `age ${draft.targetAge}` : "—"} />
               </div>
             </div>

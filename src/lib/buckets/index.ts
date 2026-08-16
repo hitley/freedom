@@ -98,7 +98,7 @@ export interface Timeline {
   buckets: Record<string, number[]>;
   /** Projected balance + unallocated per account id, aligned to `dates`. */
   accounts: Record<string, { balance: number; unallocated: number }[]>;
-  /** True if any bucket dips below £0 at any point (a spend it can't cover). */
+  /** True if any bucket dips below $0 at any point (a spend it can't cover). */
   anyShortfall: boolean;
 }
 

@@ -28,6 +28,7 @@ This page is generated from the code: file descriptions come from each file's he
 | `HoldingDetail.tsx` | _—_ |
 | `HoldingEditor.tsx` | _—_ |
 | `InvestmentsPanel.tsx` | _—_ |
+| `useFxRates.ts` | _—_ |
 
 ## Model
 
@@ -45,6 +46,9 @@ The data types this Component owns (from `types.ts`).
 | `InvestmentsState` | interface | The full client-side state: every holding the user tracks. |
 | `Quote` | interface | A market quote for a ticker. `asOf` is a date-only ISO string. |
 | `PriceProvider` | interface | Resolves live prices for a set of tickers. Keyed by ticker (upper-case). |
+| `FxRates` | type | Home-currency-per-unit rates, keyed by foreign currency code (upper-case). |
+| `FxRate` | interface | A resolved FX rate for one currency pair. `asOf` is a date-only ISO string. |
+| `FxProvider` | interface | Resolves home-currency rates for a set of foreign currencies. |
 | `HoldingView` | interface | A holding enriched with the today-snapshot figures the UI needs. |
 | `HistoryPeriod` | interface | One period in a holding's history, derived from consecutive snapshots. The first period has no `prevValue`/`growth` (nothing to compare against). |
 | `InvestmentsSummary` | interface | Whole-portfolio rollup for the summary header. |

@@ -11,9 +11,10 @@ import {
   type Transaction,
 } from "@/lib/spending";
 
-const gbp2 = new Intl.NumberFormat("en-GB", {
+const money2 = new Intl.NumberFormat("en-GB", {
   style: "currency",
-  currency: "GBP",
+  currency: "AUD",
+  currencyDisplay: "narrowSymbol",
   maximumFractionDigits: 2,
 });
 
@@ -141,7 +142,7 @@ export default function ReconcileModal({
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm text-foreground">{occ.payee}</div>
                       <div className="mt-0.5 text-xs text-muted">
-                        due {dayMonth.format(parse(occ.dueDate))} · {gbp2.format(occ.estimate)}
+                        due {dayMonth.format(parse(occ.dueDate))} · {money2.format(occ.estimate)}
                       </div>
                     </div>
                     <StatusChip occ={occ} />
@@ -170,7 +171,7 @@ export default function ReconcileModal({
                       <span className="min-w-0 truncate text-foreground">
                         Looks like{" "}
                         <span className="font-medium">{suggestion.description}</span> ·{" "}
-                        {gbp2.format(suggestion.amount)} ·{" "}
+                        {money2.format(suggestion.amount)} ·{" "}
                         {dayMonth.format(parse(suggestion.date))}
                       </span>
                       <button
@@ -216,7 +217,7 @@ function StatusChip({ occ }: { occ: ReconciledOccurrence }) {
       >
         {onBudget
           ? "on budget"
-          : `${v > 0 ? "+" : "−"}${gbp2.format(Math.abs(v))}`}
+          : `${v > 0 ? "+" : "−"}${money2.format(Math.abs(v))}`}
       </span>
     );
   }

@@ -5,7 +5,10 @@ import {
   recurrenceSchema,
   startOfDay,
 } from "@/lib/buckets";
+import { HOME_CURRENCY } from "@/lib/money";
 import type {
+  FxProvider,
+  FxRates,
   HistoryPeriod,
   Holding,
   HoldingView,
@@ -17,6 +20,53 @@ import type {
 import { DIVIDEND_FREQS } from "./types";
 
 export * from "./types";
+
+/* ----------------------------------------------------------------------------
+ * Currency conversion. A holding recorded in a foreign currency carries its
+ * amounts in that currency; converting to the home currency multiplies every
+ * monetary field by the rate (home units per 1 foreign unit). Percentages (growth,
+ * DRP yield) and unit counts are currency-independent and pass through untouched.
+ * Pure — the live rate is fetched at the edge (`useFxRates`) and threaded in.
+ * ------------------------------------------------------------------------- */
+
+/** The home-currency rate for a holding: 1 when it's already home or unrated. */
+export function holdingRate(holding: Holding, rates?: FxRates): number {
+  const code = holding.currency?.toUpperCase();
+  if (!code || code === HOME_CURRENCY) return 1;
+  return rates?.[code] ?? 1;
+}
+
+/**
+ * Convert one holding into the home currency, scaling every monetary field by the
+ * FX rate and clearing `currency` (the result is home-denominated). A holding
+ * already in the home currency — or one whose rate is missing (offline before the
+ * first fetch) — is returned unchanged, so downstream math never sees a foreign
+ * amount half-converted.
+ */
+export function convertHolding(holding: Holding, rates?: FxRates): Holding {
+  const rate = holdingRate(holding, rates);
+  if (rate === 1) return holding;
+  return {
+    ...holding,
+    currency: undefined,
+    pricePerUnit: holding.pricePerUnit === undefined ? undefined : holding.pricePerUnit * rate,
+    balance: holding.balance === undefined ? undefined : holding.balance * rate,
+    contribution: holding.contribution
+      ? { ...holding.contribution, amount: holding.contribution.amount * rate }
+      : undefined,
+    history: holding.history?.map((s) => ({
+      ...s,
+      value: s.value * rate,
+      contributed: s.contributed === undefined ? undefined : s.contributed * rate,
+    })),
+  };
+}
+
+/** Convert an entire portfolio into the home currency (see `convertHolding`). */
+export function convertToHome(state: InvestmentsState, rates?: FxRates): InvestmentsState {
+  if (!rates || state.holdings.every((h) => holdingRate(h, rates) === 1)) return state;
+  return { holdings: state.holdings.map((h) => convertHolding(h, rates)) };
+}
 
 /* ----------------------------------------------------------------------------
  * Pure helpers. No I/O, no React — given holdings (and optional live quotes),
@@ -298,6 +348,17 @@ export const manualPriceProvider: PriceProvider = {
   },
 };
 
+/**
+ * The default FX provider: returns no rates, so every holding values at its stored
+ * amount (home currency assumed). The live `useFxRates` hook supplies real rates
+ * in the UI; a server-side feed could implement this same shape later.
+ */
+export const manualFxProvider: FxProvider = {
+  async rates() {
+    return {};
+  },
+};
+
 /* ----------------------------------------------------------------------------
  * Validation at the trust boundary. Anything from the editor, an API, or an
  * import passes through here before it's stored or trusted. (No DB yet — this is
@@ -329,6 +390,12 @@ export const holdingSchema = z
     name: z.string().trim().min(1).max(80),
     kind: z.enum(["super", "shares", "etf", "cash", "other"]),
     valuation: z.enum(["market", "balance"]),
+    currency: z
+      .string()
+      .trim()
+      .regex(/^[A-Za-z]{3}$/, "expected a 3-letter ISO currency code")
+      .transform((c) => c.toUpperCase())
+      .optional(),
     ticker: z.string().trim().max(12).optional(),
     units: z.number().min(0).max(1e12).optional(),
     pricePerUnit: MONEY.optional(),

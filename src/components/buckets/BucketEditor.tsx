@@ -16,9 +16,10 @@ import {
   type Cashflow,
 } from "@/lib/buckets";
 
-const gbp0 = new Intl.NumberFormat("en-GB", {
+const money0 = new Intl.NumberFormat("en-GB", {
   style: "currency",
-  currency: "GBP",
+  currency: "AUD",
+  currencyDisplay: "narrowSymbol",
   maximumFractionDigits: 0,
 });
 
@@ -156,7 +157,7 @@ export default function BucketEditor({
         <div className="mt-6">
           <div className="mb-2 flex items-baseline justify-between">
             <span className="text-sm font-medium">Where the money sits today</span>
-            <span className="text-sm text-muted">{gbp0.format(allocated)} total</span>
+            <span className="text-sm text-muted">{money0.format(allocated)} total</span>
           </div>
           {accounts.length === 0 ? (
             <p className="text-sm text-muted">
@@ -172,7 +173,7 @@ export default function BucketEditor({
                   <div className="min-w-0">
                     <div className="truncate text-sm">{a.name}</div>
                     <div className="text-xs text-muted">
-                      holds {gbp0.format(a.balance)}
+                      holds {money0.format(a.balance)}
                     </div>
                   </div>
                   <div className="w-32 shrink-0">

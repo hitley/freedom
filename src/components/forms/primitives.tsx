@@ -6,6 +6,8 @@
  * cashflow/history rows); only these generic field controls are shared.
  */
 
+import { HOME_SYMBOL } from "@/lib/money";
+
 /** A labelled block: a small caption above an arbitrary control. */
 export function Field({
   label,
@@ -22,7 +24,7 @@ export function Field({
   );
 }
 
-/** A £-prefixed numeric input. Filters to digits and a decimal point. */
+/** A currency-symbol-prefixed numeric input. Filters to digits and a decimal point. */
 export function MoneyInput({
   value,
   onChange,
@@ -34,7 +36,7 @@ export function MoneyInput({
 }) {
   return (
     <div className="flex items-center rounded-xl border border-border bg-surface px-3 transition-colors focus-within:border-emerald">
-      <span className="text-sm text-muted">£</span>
+      <span className="text-sm text-muted">{HOME_SYMBOL}</span>
       <input
         inputMode="decimal"
         value={value}
