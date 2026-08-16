@@ -364,10 +364,10 @@ export default function HoldingEditor({
   );
 }
 
-/** Drop blank rows and sort oldest-first before saving. */
+/** Drop blank rows (no date, or a zero/blank value) and sort oldest-first before saving. */
 const cleanHistory = (history: HoldingSnapshot[]): HoldingSnapshot[] =>
   history
-    .filter((s) => s.date && s.value >= 0)
+    .filter((s) => s.date && s.value > 0)
     .map((s) => ({
       date: s.date,
       value: s.value,
