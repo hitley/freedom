@@ -86,11 +86,15 @@ export function useFxRates(
     .sort()
     .join(",");
 
-  const [state, setState] = useState<FxState>(() => ({
-    ...readCache(home),
+  // Start empty so the server and the client's first render agree — reading the
+  // localStorage cache during render would mismatch SSR (the server has no cache)
+  // and trip a hydration error. The cache is applied in the effect, post-hydration.
+  const [state, setState] = useState<FxState>({
+    rates: {},
+    asOf: null,
     offline: false,
     loading: false,
-  }));
+  });
 
   useEffect(() => {
     const needed = neededKey ? neededKey.split(",") : [];
@@ -100,9 +104,15 @@ export function useFxRates(
     let active = true;
     const controller = new AbortController();
 
-    // Fetch all needed pairs; state is only ever set after an await, so this stays
-    // out of the synchronous render/effect path.
     const load = async () => {
+      // Defer past the synchronous effect body, then show any cached rates
+      // instantly (post-hydration this is safe) before the live fetch resolves.
+      await Promise.resolve();
+      if (!active) return;
+      const cached = readCache(home);
+      if (Object.keys(cached.rates).length > 0) {
+        setState((s) => ({ ...s, ...cached }));
+      }
       try {
         const results = await Promise.all(
           needed.map((c) =>
@@ -119,7 +129,7 @@ export function useFxRates(
         setState({ ...next, offline: false, loading: false });
       } catch {
         if (!active) return;
-        // Keep whatever cache we have; just mark that we're not live.
+        // Offline/failed — fall back to the cache (already applied above) and flag it.
         setState((s) => ({ ...s, offline: true, loading: false }));
       }
     };
