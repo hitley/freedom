@@ -423,16 +423,21 @@ export default function FreedomApp({
   };
 
   const completeVision = (v: FreedomVision) => {
+    // The goal the user named seeds the spend the engine funds — but only when it
+    // actually changed in the flow. Otherwise re-completing the vision (or editing
+    // its wording) would clobber an annual spend the user tuned on the Trajectory.
+    const spendChanged = v.annualSpend !== vision?.annualSpend;
     setVision(v);
-    // The goal the user named becomes the spend the engine funds.
-    setInputs((prev) => ({
-      ...prev,
-      annualSpend: v.annualSpend,
-      ongoingAnnualIncome:
-        v.fireStyle === "barista"
-          ? Math.max(prev.ongoingAnnualIncome ?? 0, fireStyleMeta(v.fireStyle).defaultSpend / 2)
-          : prev.ongoingAnnualIncome,
-    }));
+    if (spendChanged) {
+      setInputs((prev) => ({
+        ...prev,
+        annualSpend: v.annualSpend,
+        ongoingAnnualIncome:
+          v.fireStyle === "barista"
+            ? Math.max(prev.ongoingAnnualIncome ?? 0, fireStyleMeta(v.fireStyle).defaultSpend / 2)
+            : prev.ongoingAnnualIncome,
+      }));
+    }
     setEditing(false);
     setVisionOpen(false);
     // Persist the captured vision immediately (not debounced — it's a deliberate
