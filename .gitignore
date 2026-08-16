@@ -34,8 +34,12 @@ yarn-error.log*
 .env*
 !.env.example
 
-# local PGlite database (DATABASE_DRIVER=pglite) — on-disk dev data, never committed
+# local PGlite databases (DATABASE_DRIVER=pglite) — on-disk dev data, never committed.
+# `.pglite/` is the default dir; `.pglite-demo/` is the demo profile (rebuilt from
+# scripts/seed-demo.mjs). The *real* profile lives OUTSIDE this repo (~/.freedom) so
+# no git/rm/upload in here can ever reach it — see src/db/CLAUDE.md.
 .pglite/
+.pglite-demo/
 
 # vercel
 .vercel

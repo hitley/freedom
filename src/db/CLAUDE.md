@@ -15,6 +15,33 @@ Both drivers are dynamically imported so PGlite's WASM stays out of the prod bun
 (no wire server) — apply migrations with **`npm run db:local`** (`scripts/migrate-local.mjs`, the
 PGlite migrator over the committed `drizzle/` SQL).
 
+## Local data profiles (real vs demo vs test)
+
+Which dataset you're on is *only* a matter of **which folder PGlite opens** (`PGLITE_DATA_DIR`) —
+never a code branch — so there's no conditional logic to get wrong. Three profiles, all driven by
+npm scripts that set the env inline:
+
+| Profile | Command | Data dir | Purpose |
+|---------|---------|----------|---------|
+| **real** | `npm run dev:real` | `~/.freedom/real.pglite` — **outside this repo** | your actual private data |
+| **demo** | `npm run dev:demo` | `./.pglite-demo` (gitignored) | fabricated data for demos/screenshots |
+| **test** | `npm test` / `npm run test:e2e` | ephemeral | already fake, unchanged |
+
+- **The real profile lives outside the working tree on purpose.** Gitignore stops accidental
+  *commits*; living at `~/.freedom` means no `git add -A`, `git clean`, stray `rm` in the repo, or
+  "upload this folder" can ever reach your real numbers. First run: `npm run db:real` once to apply
+  migrations there, then `npm run dev:real`.
+- **The demo profile is disposable and reproducible.** `npm run seed:demo` migrates `./.pglite-demo`
+  and rebuilds it from **`scripts/seed-demo.mjs`** — a committed, 100%-fabricated household ("Demo
+  Household"). Safe to commit precisely because it's invented. The seed script **refuses to run
+  unless `PGLITE_DATA_DIR` is set**, so it can never wipe the default or real db.
+- **Both dev profiles set `FREEDOM_PROFILE`**, which lights up the `ProfileBanner`
+  (`src/components/ProfileBanner.tsx`) at the top of every page: an **amber "DEMO DATA"** bar under
+  `demo`, a **red "REAL DATA"** bar under `real`. At-a-glance insurance against showing the wrong
+  dataset while presenting. (The default `npm run dev` and production render no bar.)
+- Both dev profiles set `AUTH_DEV_BYPASS=true` and run as the fixed dev user
+  (`src/lib/server/dev-auth.ts`); the seed writes that user's workspace so `dev:demo` reads it.
+
 ## Schema shape (multi-tenant)
 
 - `financialProfiles` holds the engine inputs for an instance as **typed columns**.

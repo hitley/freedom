@@ -7,6 +7,20 @@
       "runtimeArgs": ["run", "dev", "--prefix", "/Users/hitley/code/freedom", "--", "-p", "3100"],
       "port": 3100,
       "autoPort": false
+    },
+    {
+      "name": "freedom-demo",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:demo", "--prefix", "/Users/hitley/code/freedom", "--", "-p", "3101"],
+      "port": 3101,
+      "autoPort": false
+    },
+    {
+      "name": "freedom-real",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev:real", "--prefix", "/Users/hitley/code/freedom", "--", "-p", "3102"],
+      "port": 3102,
+      "autoPort": false
     }
   ]
 }
