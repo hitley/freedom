@@ -56,7 +56,16 @@ export default async function Home() {
 
   return (
     <main className="flex-1">
+      {/*
+        Keying on the active workspace forces a full remount when it changes.
+        FreedomApp seeds all its state from the initial* props once at mount and
+        never re-syncs, so without this the client keeps showing (and debounced-
+        saving) the previous workspace's data after a switch — silently writing
+        one workspace's figures into another. The key ties client state lifetime
+        to the workspace it was loaded for.
+      */}
       <FreedomApp
+        key={activeInstance?.id ?? "no-instance"}
         initialInputs={initialInputs}
         initialVision={initialVision}
         initialBuckets={initialBuckets}
