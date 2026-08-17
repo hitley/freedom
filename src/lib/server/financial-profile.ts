@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { financialProfiles } from "@/db/schema";
 import { financialInputsSchema, type FinancialInputs } from "@/lib/finance";
-import { getDefaultInstance, getOrCreateDefaultInstance } from "./instance";
+import { getActiveInstance, getOrCreateActiveInstance } from "./instance";
 
 /**
  * Data access layer for an instance's financial profile (the engine inputs).
@@ -17,7 +17,7 @@ import { getDefaultInstance, getOrCreateDefaultInstance } from "./instance";
  * instance, or no profile row) — the UI then falls back to its starter defaults.
  */
 export async function loadFinancialProfile(): Promise<FinancialInputs | null> {
-  const instance = await getDefaultInstance();
+  const instance = await getActiveInstance();
   if (!instance) return null;
 
   const row = await db.query.financialProfiles.findFirst({
@@ -42,7 +42,7 @@ export async function loadFinancialProfile(): Promise<FinancialInputs | null> {
  */
 export async function saveFinancialProfile(input: unknown): Promise<void> {
   const inputs = financialInputsSchema.parse(input);
-  const instance = await getOrCreateDefaultInstance();
+  const instance = await getOrCreateActiveInstance();
 
   const values = {
     instanceId: instance.id,

@@ -19,6 +19,7 @@ import BucketsPanel from "./buckets/BucketsPanel";
 import InvestmentsPanel from "./investments/InvestmentsPanel";
 import SpendingPanel from "./spending/SpendingPanel";
 import InboxPanel from "./inbox/InboxPanel";
+import WorkspaceSwitcher from "./WorkspaceSwitcher";
 
 /**
  * Reality + assumptions a fresh user starts from. The *goal* side (annual spend)
@@ -297,6 +298,14 @@ interface FreedomAppProps {
     id: string,
     approved: Transaction[],
   ) => Promise<{ item: InboxItem; spending: SpendingState }>;
+  /** Workspaces this owner can switch between (yours, a child's, …). */
+  workspaces: { id: string; name: string }[];
+  /** The currently-active workspace id, or null before any is provisioned. */
+  activeInstanceId: string | null;
+  /** Server action pointing the session at another owned workspace. */
+  switchWorkspaceAction: (instanceId: string) => Promise<{ ok: true }>;
+  /** Server action creating a new workspace and making it active. */
+  createWorkspaceAction: (name: string) => Promise<{ ok: true }>;
   /** Server action that signs the user out. */
   signOutAction: () => Promise<void>;
   /** Display name (or email) of the signed-in user. */
@@ -327,6 +336,10 @@ export default function FreedomApp({
   dismissInboxItemAction,
   processInboxItemAction,
   reconcileInboxItemAction,
+  workspaces,
+  activeInstanceId,
+  switchWorkspaceAction,
+  createWorkspaceAction,
   signOutAction,
   userName,
   authBypassed = false,
@@ -493,6 +506,12 @@ export default function FreedomApp({
             {saveState !== "idle" && (
               <span>{saveState === "saving" ? "Saving…" : "Saved"}</span>
             )}
+            <WorkspaceSwitcher
+              workspaces={workspaces}
+              activeInstanceId={activeInstanceId}
+              switchWorkspaceAction={switchWorkspaceAction}
+              createWorkspaceAction={createWorkspaceAction}
+            />
             {userName && <span className="text-muted/70">{userName}</span>}
             {authBypassed ? (
               <span

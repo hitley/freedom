@@ -26,5 +26,15 @@
         "link": "/features/spending/annualised-spend"
       }
     ]
+  },
+  {
+    "text": "Workspaces",
+    "collapsed": false,
+    "items": [
+      {
+        "text": "Choosing which workspace is active",
+        "link": "/features/workspaces/active-workspace"
+      }
+    ]
   }
 ]

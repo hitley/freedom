@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { investmentsStates } from "@/db/schema";
 import { investmentsStateSchema, type InvestmentsState } from "@/lib/investments";
-import { getDefaultInstance, getOrCreateDefaultInstance } from "./instance";
+import { getActiveInstance, getOrCreateActiveInstance } from "./instance";
 
 /**
  * Data access layer for an instance's investments state. Stored as a single
@@ -13,7 +13,7 @@ import { getDefaultInstance, getOrCreateDefaultInstance } from "./instance";
 
 /** The default instance's investments state, or `null` if none saved yet. */
 export async function loadInvestments(): Promise<InvestmentsState | null> {
-  const instance = await getDefaultInstance();
+  const instance = await getActiveInstance();
   if (!instance) return null;
 
   const row = await db.query.investmentsStates.findFirst({
@@ -29,7 +29,7 @@ export async function loadInvestments(): Promise<InvestmentsState | null> {
 /** Upsert the default instance's investments state, provisioning on first save. */
 export async function saveInvestments(input: unknown): Promise<void> {
   const data = investmentsStateSchema.parse(input);
-  const instance = await getOrCreateDefaultInstance();
+  const instance = await getOrCreateActiveInstance();
   const updatedAt = new Date();
 
   await db

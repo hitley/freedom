@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { bucketsStates } from "@/db/schema";
 import { bucketsStateSchema, type BucketsState } from "@/lib/buckets";
-import { getDefaultInstance, getOrCreateDefaultInstance } from "./instance";
+import { getActiveInstance, getOrCreateActiveInstance } from "./instance";
 
 /**
  * Data access layer for an instance's buckets state. Stored as a single jsonb
@@ -13,7 +13,7 @@ import { getDefaultInstance, getOrCreateDefaultInstance } from "./instance";
 
 /** The default instance's buckets state, or `null` if none saved yet. */
 export async function loadBuckets(): Promise<BucketsState | null> {
-  const instance = await getDefaultInstance();
+  const instance = await getActiveInstance();
   if (!instance) return null;
 
   const row = await db.query.bucketsStates.findFirst({
@@ -27,7 +27,7 @@ export async function loadBuckets(): Promise<BucketsState | null> {
 /** Upsert the default instance's buckets state, provisioning on first save. */
 export async function saveBuckets(input: unknown): Promise<void> {
   const data = bucketsStateSchema.parse(input);
-  const instance = await getOrCreateDefaultInstance();
+  const instance = await getOrCreateActiveInstance();
   const updatedAt = new Date();
 
   await db

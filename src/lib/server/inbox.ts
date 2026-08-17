@@ -10,8 +10,8 @@ import {
   type InboxStatus,
 } from "@/lib/inbox";
 import {
-  getDefaultInstance,
-  getOrCreateDefaultInstance,
+  getActiveInstance,
+  getOrCreateActiveInstance,
   requireInstance,
 } from "./instance";
 
@@ -42,7 +42,7 @@ function toItem(row: InboxRow): InboxItem {
 
 /** The default instance's inbox items, newest-first. Empty if no instance yet. */
 export async function listInbox(): Promise<InboxItem[]> {
-  const instance = await getDefaultInstance();
+  const instance = await getActiveInstance();
   if (!instance) return [];
 
   const rows = await db
@@ -60,7 +60,7 @@ export async function listInbox(): Promise<InboxItem[]> {
  */
 export async function addInboxItem(input: unknown): Promise<InboxItem> {
   const data = newInboxItemSchema.parse(input);
-  const instance = await getOrCreateDefaultInstance();
+  const instance = await getOrCreateActiveInstance();
 
   const [row] = await db
     .insert(inboxItems)

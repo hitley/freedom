@@ -7,6 +7,7 @@ import { loadBuckets } from "@/lib/server/buckets";
 import { loadInvestments } from "@/lib/server/investments";
 import { loadSpending } from "@/lib/server/spending";
 import { listInbox } from "@/lib/server/inbox";
+import { getActiveInstance, listOwnedInstances } from "@/lib/server/instance";
 import { DEV_USER_NAME, isAuthBypassed } from "@/lib/server/dev-auth";
 import {
   saveFinancialProfileAction,
@@ -18,6 +19,8 @@ import {
   dismissInboxItemAction,
   processInboxItemAction,
   reconcileInboxItemAction,
+  switchWorkspaceAction,
+  createWorkspaceAction,
 } from "./actions";
 
 export default async function Home() {
@@ -33,6 +36,8 @@ export default async function Home() {
     initialInvestments,
     initialSpending,
     initialInbox,
+    workspaces,
+    activeInstance,
   ] = await Promise.all([
     loadFinancialProfile(),
     loadVision(),
@@ -40,6 +45,8 @@ export default async function Home() {
     loadInvestments(),
     loadSpending(),
     listInbox(),
+    listOwnedInstances(),
+    getActiveInstance(),
   ]);
 
   async function signOutAction() {
@@ -65,6 +72,10 @@ export default async function Home() {
         dismissInboxItemAction={dismissInboxItemAction}
         processInboxItemAction={processInboxItemAction}
         reconcileInboxItemAction={reconcileInboxItemAction}
+        workspaces={workspaces.map((w) => ({ id: w.id, name: w.name }))}
+        activeInstanceId={activeInstance?.id ?? null}
+        switchWorkspaceAction={switchWorkspaceAction}
+        createWorkspaceAction={createWorkspaceAction}
         signOutAction={signOutAction}
         authBypassed={bypass}
         userName={

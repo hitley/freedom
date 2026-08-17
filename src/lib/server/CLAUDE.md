@@ -8,6 +8,19 @@ resolves the instance from the session (never a client-supplied id), so there's 
 on first save, so renders never mutate), and `requireInstance(id)` (ownership check for
 client-named instances).
 
+**One owner can hold several workspaces** (their own + a child's, say). Which one is live for a
+request is carried by the `freedom.activeInstance` **cookie**, but that value is only ever a
+*hint*: `getActiveInstance` / `getOrCreateActiveInstance` re-verify it through `requireInstance`
+before touching data — a stale/foreign/tampered cookie silently falls back to the default
+workspace, so the cookie can never widen access. **Every Component reads/writes through these
+active-instance resolvers**, not the raw `getDefault*` pair. `listOwnedInstances` powers the
+header switcher; `switchActiveInstance(id)` (ownership-checked) and `createAndActivateInstance(name)`
+set the cookie and are the only mutation helpers here — invoked from the `switchWorkspaceAction` /
+`createWorkspaceAction` server actions, which `revalidatePath("/")` so the whole page re-renders
+against the newly-active instance. This is the same `instanceId` tenancy the schema was built for —
+no second database, no auth change; true multi-*member* sharing of one workspace is still the
+future work in `ROADMAP.md`.
+
 `financial-profile.ts` was the first component wired through it: `loadFinancialProfile` /
 `saveFinancialProfile`, crossing the `financialInputsSchema` zod boundary in *and* out and
 upserting on the unique `instanceId`. The `vision`, `buckets`, `investments`, and `spending`

@@ -9,6 +9,10 @@ import { saveSpending } from "@/lib/server/spending";
 import { addInboxItem, setInboxStatus } from "@/lib/server/inbox";
 import { processInboxItem } from "@/lib/server/extract";
 import { reconcileInboxItem } from "@/lib/server/reconcile";
+import {
+  createAndActivateInstance,
+  switchActiveInstance,
+} from "@/lib/server/instance";
 import type { FinancialInputsInput } from "@/lib/finance";
 import type { FreedomVisionInput } from "@/lib/vision";
 import type { BucketsStateInput } from "@/lib/buckets";
@@ -26,6 +30,28 @@ export async function saveFinancialProfileAction(
   inputs: FinancialInputsInput,
 ): Promise<{ ok: true }> {
   await saveFinancialProfile(inputs);
+  return { ok: true };
+}
+
+/**
+ * Switch the active workspace (e.g. from yours to your child's). The DAL
+ * re-checks ownership before trusting the id; `revalidatePath` re-renders the
+ * page against the newly-active instance's data.
+ */
+export async function switchWorkspaceAction(
+  instanceId: string,
+): Promise<{ ok: true }> {
+  await switchActiveInstance(instanceId);
+  revalidatePath("/");
+  return { ok: true };
+}
+
+/** Create a new workspace and make it active. Returns nothing sensitive — the page reloads. */
+export async function createWorkspaceAction(
+  name: string,
+): Promise<{ ok: true }> {
+  await createAndActivateInstance(name);
+  revalidatePath("/");
   return { ok: true };
 }
 
