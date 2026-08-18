@@ -47,7 +47,10 @@ same. Clicking the **"Projected in 1 year"** summary stat **maximises the whole 
 `investments/PortfolioDetail` — the same detail shell driven by `projectPortfolio`, with a
 horizon selector (1y–30y), extra-contribution + growth-adjustment what-if levers, and the
 **magic number drawn as a reference line** (passed down from `FreedomApp` as `magicNumber`) so you
-can read the year the portfolio crosses into freedom.
+can read the year the portfolio crosses into freedom. Moving a lever overlays the untouched
+**"as-is" baseline** as a second muted line (via `ProjectionChart`'s optional `compare` prop) so
+the difference is visible at a glance, and the **"Reaches freedom" stat carries a jump-icon**
+(`Stat`'s optional `action`) that switches to the Trajectory view (`onViewTrajectory` → `setView`).
 
 ## The maximise-to-detail shell (`src/components/detail/`)
 

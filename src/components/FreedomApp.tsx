@@ -583,6 +583,7 @@ export default function FreedomApp({
           onChange={setInvestments}
           fx={fx}
           magicNumber={proj.magicNumber}
+          onViewTrajectory={() => setView("trajectory")}
         />
       ) : view === "spending" ? (
         <SpendingPanel

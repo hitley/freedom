@@ -54,6 +54,7 @@ export default function InvestmentsPanel({
   quotes,
   fx,
   magicNumber,
+  onViewTrajectory,
 }: {
   state: InvestmentsState;
   onChange: (next: InvestmentsState) => void;
@@ -63,6 +64,8 @@ export default function InvestmentsPanel({
   fx?: FxState;
   /** Freedom target (magic number), drawn as a reference line in the portfolio projection. */
   magicNumber?: number | null;
+  /** Switch to the Trajectory view — offered from the portfolio projection's freedom stat. */
+  onViewTrajectory?: () => void;
 }) {
   // null = closed; a Holding = editing/adding that holding.
   const [editing, setEditing] = useState<Holding | null>(null);
@@ -112,6 +115,7 @@ export default function InvestmentsPanel({
         state={homeState}
         quotes={quotes}
         magicNumber={magicNumber}
+        onShowFreedom={onViewTrajectory}
         onClose={() => setShowPortfolio(false)}
       />
     );

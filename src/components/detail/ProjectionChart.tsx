@@ -42,6 +42,7 @@ export default function ProjectionChart({
   actualLabel = "Recorded",
   projectedLabel = "Projected",
   reference,
+  compare,
   tooltipLines,
   ariaLabel,
 }: {
@@ -56,6 +57,8 @@ export default function ProjectionChart({
   projectedLabel?: string;
   /** An optional horizontal marker line, e.g. a bucket's target. */
   reference?: { value: number; label: string };
+  /** An optional second projected line overlaid for comparison (e.g. a baseline). */
+  compare?: { points: ChartPoint[]; label: string };
   tooltipLines: (series: SeriesKind, idx: number) => string[];
   ariaLabel?: string;
 }) {
@@ -71,6 +74,7 @@ export default function ProjectionChart({
       1,
       ...actual.map((a) => a.v),
       ...projected.map((p) => p.v),
+      ...(compare?.points.map((p) => p.v) ?? []),
       reference?.value ?? 0,
     ) * 1.08;
 
@@ -83,6 +87,9 @@ export default function ProjectionChart({
   const actualPath = actual
     .map((a, i) => `${i === 0 ? "M" : "L"} ${x(a.t).toFixed(1)} ${y(a.v).toFixed(1)}`)
     .join(" ");
+  const comparePath = compare
+    ? compare.points.map((p, i) => `${i === 0 ? "M" : "L"} ${x(p.t).toFixed(1)} ${y(p.v).toFixed(1)}`).join(" ")
+    : "";
 
   const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => f * yMax);
   const xTicks = Array.from({ length: 6 }, (_, i) => t0 + (i / 5) * span);
@@ -189,6 +196,11 @@ export default function ProjectionChart({
           today
         </text>
 
+        {/* comparison baseline (e.g. as-is), drawn under the live projection */}
+        {compare && (
+          <path d={comparePath} fill="none" stroke="var(--muted)" strokeWidth={2} strokeDasharray="5 4" opacity={0.55} />
+        )}
+
         {/* projected (future) — dashed emerald */}
         <path d={projPath} fill="none" stroke={PROJECTED_COLOR} strokeWidth={2.25} strokeDasharray="5 4" />
 
@@ -252,6 +264,12 @@ export default function ProjectionChart({
           <span className="inline-block h-0.5 w-4" style={{ background: PROJECTED_COLOR }} />
           {projectedLabel}
         </span>
+        {compare && (
+          <span className="inline-flex items-center gap-1.5">
+            <span className="inline-block h-0.5 w-4" style={{ background: "var(--muted)" }} />
+            {compare.label}
+          </span>
+        )}
       </div>
     </div>
   );

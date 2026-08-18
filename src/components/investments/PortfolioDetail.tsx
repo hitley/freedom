@@ -35,12 +35,15 @@ export default function PortfolioDetail({
   state,
   quotes,
   magicNumber,
+  onShowFreedom,
   onClose,
 }: {
   state: InvestmentsState;
   quotes?: Record<string, Quote>;
   /** The financial-freedom target, drawn as a reference line when finite. */
   magicNumber?: number | null;
+  /** Jump to the freedom trajectory (Trajectory view); shown as a corner action. */
+  onShowFreedom?: () => void;
   onClose: () => void;
 }) {
   const [extraMonthly, setExtraMonthly] = useState(0);
@@ -49,23 +52,30 @@ export default function PortfolioDetail({
 
   const months = HORIZONS.find((h) => h.id === horizon)!.months;
   const today = useMemo(() => startOfDay(new Date()), []);
+  const end = useMemo(() => addMonths(today, months), [today, months]);
+  const leversActive = extraMonthly !== 0 || growthDeltaPct !== 0;
 
   const projection = useMemo(
-    () =>
-      projectPortfolio(state, today, addMonths(today, months), {
-        extraMonthly,
-        growthDeltaPct,
-        quotes,
-      }),
-    [state, today, months, extraMonthly, growthDeltaPct, quotes],
+    () => projectPortfolio(state, today, end, { extraMonthly, growthDeltaPct, quotes }),
+    [state, today, end, extraMonthly, growthDeltaPct, quotes],
+  );
+  // The untouched "as-is" path — computed only when a lever moves, to overlay for comparison.
+  const baseline = useMemo(
+    () => (leversActive ? projectPortfolio(state, today, end, { quotes }) : null),
+    [state, today, end, leversActive, quotes],
   );
 
   const valueToday = projection.value[0] ?? 0;
   const projectedEnd = projection.value[projection.value.length - 1] ?? valueToday;
   const projContributed = projection.contributed[projection.contributed.length - 1] ?? 0;
   const projGrowth = projectedEnd - valueToday - projContributed;
+  const baselineEnd = baseline ? baseline.value[baseline.value.length - 1] ?? projectedEnd : projectedEnd;
+  const delta = projectedEnd - baselineEnd;
 
   const projected = projection.dates.map((d, i) => ({ t: d.getTime(), v: projection.value[i] }));
+  const compare = baseline
+    ? { points: baseline.dates.map((d, i) => ({ t: d.getTime(), v: baseline.value[i] })), label: "As-is" }
+    : undefined;
 
   const hasTarget = magicNumber != null && Number.isFinite(magicNumber);
   const reference = hasTarget
@@ -106,10 +116,20 @@ export default function PortfolioDetail({
           label={`Projected in ${months / 12} ${months === 12 ? "year" : "years"}`}
           value={gbp0.format(projectedEnd)}
           accent="text-emerald"
-          hint={`${compactMoney(projGrowth)} growth · ${compactMoney(projContributed)} added`}
+          hint={
+            leversActive
+              ? `${delta >= 0 ? "+" : ""}${compactMoney(delta)} vs as-is · ${compactMoney(projContributed)} added`
+              : `${compactMoney(projGrowth)} growth · ${compactMoney(projContributed)} added`
+          }
         />
         {freedom ? (
-          <Stat label="Reaches freedom" value={freedom.value} accent="text-gold" hint={freedom.hint} />
+          <Stat
+            label="Reaches freedom"
+            value={freedom.value}
+            accent="text-gold"
+            hint={freedom.hint}
+            action={onShowFreedom ? { label: "See your freedom trajectory", onClick: onShowFreedom } : undefined}
+          />
         ) : (
           <Stat label="Contributions" value={gbp0.format(projContributed)} hint="paid in over the horizon" />
         )}
@@ -121,7 +141,8 @@ export default function PortfolioDetail({
         title="Portfolio projection"
         subtitle="Every holding rolled forward on your assumptions. Hover to read any point; drag the levers to explore."
         ariaLabel="Whole-portfolio value over time"
-        projectedLabel="Projected value"
+        projectedLabel={leversActive ? "With your changes" : "Projected value"}
+        compare={compare}
         headerRight={<HorizonSelector options={HORIZONS} value={horizon} onChange={setHorizon} />}
         reference={reference}
         tooltipLines={tooltipLines}
