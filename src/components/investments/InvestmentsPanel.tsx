@@ -250,15 +250,6 @@ export default function InvestmentsPanel({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <button
-                      type="button"
-                      aria-label={`Reorder ${holding.name || "holding"}`}
-                      title="Drag to reorder (or focus and use arrow keys)"
-                      className={`${DRAG_HANDLE_CLASS} opacity-0 group-hover:opacity-100 focus-visible:opacity-100`}
-                      {...reorder.handleProps(holding.id)}
-                    >
-                      ⠿
-                    </button>
                     <span className="text-2xl">{meta?.glyph}</span>
                     <div>
                       <div className="font-display text-base font-semibold leading-tight">
@@ -271,16 +262,27 @@ export default function InvestmentsPanel({
                       </div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditing(holding);
-                    }}
-                    className="shrink-0 rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-muted/50 hover:text-foreground"
-                  >
-                    Edit
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditing(holding);
+                      }}
+                      className="rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-muted/50 hover:text-foreground"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Reorder ${holding.name || "holding"}`}
+                      title="Drag to reorder (or focus and use arrow keys)"
+                      className={DRAG_HANDLE_CLASS}
+                      {...reorder.handleProps(holding.id)}
+                    >
+                      ⠿
+                    </button>
+                  </div>
                 </div>
 
                 <div className="mt-4 font-display text-2xl font-bold">
@@ -419,34 +421,24 @@ function Stat({
       <button
         type="button"
         onClick={onClick}
+        title={tooltip}
         className="group relative rounded-2xl border border-border bg-surface px-5 py-4 pr-10 text-left transition-colors hover:border-emerald/50"
       >
         {body}
-        {tooltip && <span className="sr-only"> — {tooltip}</span>}
-        <span className="group/tip absolute right-2.5 top-2.5">
-          <svg
-            viewBox="0 0 24 24"
-            width="15"
-            height="15"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            aria-hidden="true"
-            className="text-muted/40 transition-colors group-hover:text-emerald"
-          >
-            <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />
-          </svg>
-          {tooltip && (
-            <span
-              role="tooltip"
-              className="pointer-events-none absolute right-0 top-7 z-10 whitespace-nowrap rounded-md border border-border bg-surface-2 px-2 py-1 text-[11px] font-normal text-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover/tip:opacity-100"
-            >
-              {tooltip}
-            </span>
-          )}
-        </span>
+        <svg
+          viewBox="0 0 24 24"
+          width="15"
+          height="15"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+          className="absolute right-3 top-3 text-muted/40 transition-colors group-hover:text-emerald"
+        >
+          <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />
+        </svg>
       </button>
     );
   }

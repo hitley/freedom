@@ -306,15 +306,6 @@ export default function BucketsPanel({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <button
-                      type="button"
-                      aria-label={`Reorder ${bucket.name || "bucket"}`}
-                      title="Drag to reorder (or focus and use arrow keys)"
-                      className={`${DRAG_HANDLE_CLASS} opacity-0 group-hover:opacity-100 focus-visible:opacity-100`}
-                      {...reorder.handleProps(bucket.id)}
-                    >
-                      ⠿
-                    </button>
                     <span className="text-2xl">{bucket.glyph}</span>
                     <div>
                       <div className="font-display text-base font-semibold leading-tight">
@@ -327,16 +318,27 @@ export default function BucketsPanel({
                       </div>
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingBucket(bucket);
-                    }}
-                    className="shrink-0 rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-muted/50 hover:text-foreground"
-                  >
-                    Edit
-                  </button>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingBucket(bucket);
+                      }}
+                      className="rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:border-muted/50 hover:text-foreground"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      aria-label={`Reorder ${bucket.name || "bucket"}`}
+                      title="Drag to reorder (or focus and use arrow keys)"
+                      className={DRAG_HANDLE_CLASS}
+                      {...reorder.handleProps(bucket.id)}
+                    >
+                      ⠿
+                    </button>
+                  </div>
                 </div>
 
                 {pct !== null && (
