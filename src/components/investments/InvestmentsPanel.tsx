@@ -152,7 +152,7 @@ export default function InvestmentsPanel({
           accent="text-emerald"
           hint={`${growth >= 0 ? "+" : ""}${money0(growth)} from growth & contributions`}
           onClick={state.holdings.length > 0 ? () => setShowPortfolio(true) : undefined}
-          cta={state.holdings.length > 0 ? "Explore all horizons →" : undefined}
+          tooltip={state.holdings.length > 0 ? "Explore across horizons" : undefined}
         />
         <Stat
           label="Contributions / yr"
@@ -392,23 +392,22 @@ function Stat({
   accent = "text-foreground",
   hint,
   onClick,
-  cta,
+  tooltip,
 }: {
   label: string;
   value: string;
   accent?: string;
   hint?: string;
-  /** When set, the stat becomes a button (e.g. to open a detail view). */
+  /** When set, the stat becomes a button (e.g. to maximise into a detail view). */
   onClick?: () => void;
-  /** A call-to-action line shown when the stat is interactive. */
-  cta?: string;
+  /** Hover tooltip for the maximise icon; also the stat's accessible affordance. */
+  tooltip?: string;
 }) {
   const body = (
     <>
       <div className="text-[11px] uppercase tracking-wide text-muted">{label}</div>
       <div className={`mt-1 font-display text-2xl font-bold ${accent}`}>{value}</div>
       {hint && <div className="mt-0.5 text-xs text-muted">{hint}</div>}
-      {onClick && cta && <div className="mt-1 text-xs font-medium text-emerald">{cta}</div>}
     </>
   );
   if (onClick) {
@@ -416,9 +415,34 @@ function Stat({
       <button
         type="button"
         onClick={onClick}
-        className="rounded-2xl border border-border bg-surface px-5 py-4 text-left transition-colors hover:border-emerald/50"
+        className="group relative rounded-2xl border border-border bg-surface px-5 py-4 pr-10 text-left transition-colors hover:border-emerald/50"
       >
         {body}
+        {tooltip && <span className="sr-only"> — {tooltip}</span>}
+        <span className="group/tip absolute right-2.5 top-2.5">
+          <svg
+            viewBox="0 0 24 24"
+            width="15"
+            height="15"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden="true"
+            className="text-muted/40 transition-colors group-hover:text-emerald"
+          >
+            <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />
+          </svg>
+          {tooltip && (
+            <span
+              role="tooltip"
+              className="pointer-events-none absolute right-0 top-7 z-10 whitespace-nowrap rounded-md border border-border bg-surface-2 px-2 py-1 text-[11px] font-normal text-foreground opacity-0 shadow-lg transition-opacity duration-150 group-hover/tip:opacity-100"
+            >
+              {tooltip}
+            </span>
+          )}
+        </span>
       </button>
     );
   }
