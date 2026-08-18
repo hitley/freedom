@@ -16,7 +16,12 @@ scheduled dates) into an `InvestmentsTimeline`. A holding can also carry recorde
 `projectHolding(start, from, to, monthlyContribution, annualGrowthPct)` is a single-holding
 what-if projection with the two levers passed explicitly (so the detail view can drive live
 sliders), with `monthlyContribution` / `assumedAnnualGrowthPct` helpers seeding those levers
-from the holding.
+from the holding. `projectPortfolio(state, from, to, { extraMonthly, growthDeltaPct, quotes })`
+is the **whole-portfolio** equivalent behind `PortfolioDetail`: with no levers it equals
+`simulate`'s `total` exactly (so the detail view reconciles with the summary's "Projected in 1
+year"), then two global levers layer on — an `extraMonthly` contribution compounded in its own
+pot at the value-weighted blended rate, and a `growthDeltaPct` nudge added to every holding's
+assumed return. Call it on a **home-currency** state (FX already applied), as `simulate` is.
 
 **Prices are manual for now** — a live feed slots in via the `PriceProvider` seam
 (`manualPriceProvider` is the default, returning no quotes so holdings value at their stored

@@ -337,6 +337,80 @@ export function summarise(
   };
 }
 
+/** The whole portfolio's projected value path, aligned to `dates`. */
+export interface PortfolioProjection {
+  dates: Date[];
+  /** Total portfolio value at each marker. */
+  value: number[];
+  /** Cumulative contributions (scheduled + any extra lever) by each marker. */
+  contributed: number[];
+}
+
+/**
+ * Project the whole portfolio forward on a monthly grid for the portfolio detail
+ * what-if. With no levers this equals `simulate`'s `total` exactly, so the detail
+ * view reconciles with the summary's headline. Two global levers layer on top:
+ *   - `extraMonthly` — extra money added every month beyond scheduled contributions,
+ *     compounded in its own pot at the portfolio's value-weighted blended rate;
+ *   - `growthDeltaPct` — an optimistic/pessimistic nudge added to every holding's
+ *     assumed annual growth (and to the extra pot).
+ * Call it on a home-currency `state` (FX already applied), exactly as `simulate` is.
+ */
+export function projectPortfolio(
+  state: InvestmentsState,
+  from: Date,
+  to: Date,
+  opts: { extraMonthly?: number; growthDeltaPct?: number; quotes?: Record<string, Quote> } = {},
+): PortfolioProjection {
+  const { extraMonthly = 0, growthDeltaPct = 0, quotes } = opts;
+  const start = startOfDay(from);
+  const end = startOfDay(to);
+  const deltaMonthly = growthDeltaPct / 100 / 12;
+
+  const markers: Date[] = [];
+  for (let d = start; d.getTime() <= end.getTime(); d = addMonths(d, 1)) markers.push(d);
+  if (markers[markers.length - 1]?.getTime() !== end.getTime()) markers.push(end);
+
+  const value: Record<string, number> = {};
+  let start0 = 0;
+  for (const h of state.holdings) {
+    value[h.id] = holdingValue(h, quotes);
+    start0 += value[h.id];
+  }
+  // Value-weighted blended monthly growth at t0 — the rate the extra pot compounds at.
+  const blendedMonthly =
+    start0 > 0
+      ? state.holdings.reduce((s, h) => s + holdingValue(h, quotes) * monthlyGrowthRate(h), 0) / start0
+      : 0;
+
+  const proj: PortfolioProjection = { dates: [], value: [], contributed: [] };
+  let extraPot = 0;
+  let contributed = 0;
+  for (let i = 0; i < markers.length; i++) {
+    if (i > 0) {
+      const prev = markers[i - 1];
+      const marker = markers[i];
+      for (const h of state.holdings) {
+        value[h.id] = value[h.id] * (1 + monthlyGrowthRate(h) + deltaMonthly);
+        if (h.contribution) {
+          const added =
+            occurrences(h.contribution.recurrence, prev, marker).length * h.contribution.amount;
+          value[h.id] += added;
+          contributed += added;
+        }
+      }
+      extraPot = extraPot * (1 + blendedMonthly + deltaMonthly) + extraMonthly;
+      contributed += extraMonthly;
+    }
+    let total = extraPot;
+    for (const h of state.holdings) total += value[h.id];
+    proj.dates.push(markers[i]);
+    proj.value.push(total);
+    proj.contributed.push(contributed);
+  }
+  return proj;
+}
+
 /**
  * The default price provider: returns no quotes, so every market holding values
  * at its stored manual price. Swap in a live implementation (broker/market-data

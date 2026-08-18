@@ -11,6 +11,7 @@ import {
   holdingView,
   investmentsStateSchema,
   projectHolding,
+  projectPortfolio,
   simulate,
   summarise,
   type Holding,
@@ -135,6 +136,39 @@ describe("simulate", () => {
     const from = startOfDay(new Date(2026, 5, 17));
     const tl = simulate(state, from, addMonths(from, 12));
     expect(tl.total[0]).toBe(109_000);
+  });
+});
+
+describe("projectPortfolio", () => {
+  const from = startOfDay(new Date(2026, 5, 17));
+  const to = addMonths(from, 120);
+
+  it("with no levers, matches simulate's total exactly (reconciles with the summary)", () => {
+    const proj = projectPortfolio(state, from, to);
+    const tl = simulate(state, from, to);
+    expect(proj.value).toHaveLength(tl.total.length);
+    expect(proj.value.at(-1)).toBeCloseTo(tl.total.at(-1)!, 6);
+    expect(proj.value[0]).toBe(109_000);
+  });
+
+  it("an extra monthly contribution lifts the projected end value", () => {
+    const base = projectPortfolio(state, from, to).value.at(-1)!;
+    const withExtra = projectPortfolio(state, from, to, { extraMonthly: 500 }).value.at(-1)!;
+    expect(withExtra).toBeGreaterThan(base);
+  });
+
+  it("a positive growth nudge lifts it, a negative one lowers it", () => {
+    const base = projectPortfolio(state, from, to).value.at(-1)!;
+    const up = projectPortfolio(state, from, to, { growthDeltaPct: 2 }).value.at(-1)!;
+    const down = projectPortfolio(state, from, to, { growthDeltaPct: -2 }).value.at(-1)!;
+    expect(up).toBeGreaterThan(base);
+    expect(down).toBeLessThan(base);
+  });
+
+  it("tracks cumulative contributions (scheduled plus the extra lever)", () => {
+    const proj = projectPortfolio(state, from, to, { extraMonthly: 100 });
+    expect(proj.contributed[0]).toBe(0);
+    expect(proj.contributed.at(-1)!).toBeGreaterThan(proj.contributed[1]);
   });
 });
 

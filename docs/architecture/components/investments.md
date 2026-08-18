@@ -28,6 +28,7 @@ This page is generated from the code: file descriptions come from each file's he
 | `HoldingDetail.tsx` | _—_ |
 | `HoldingEditor.tsx` | _—_ |
 | `InvestmentsPanel.tsx` | _—_ |
+| `PortfolioDetail.tsx` | _—_ |
 | `useFxRates.ts` | _—_ |
 
 ## Model

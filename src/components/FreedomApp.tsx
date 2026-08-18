@@ -578,7 +578,12 @@ export default function FreedomApp({
       ) : view === "buckets" ? (
         <BucketsPanel state={buckets} onChange={setBuckets} />
       ) : view === "investments" ? (
-        <InvestmentsPanel state={investments} onChange={setInvestments} fx={fx} />
+        <InvestmentsPanel
+          state={investments}
+          onChange={setInvestments}
+          fx={fx}
+          magicNumber={proj.magicNumber}
+        />
       ) : view === "spending" ? (
         <SpendingPanel
           state={spending}

@@ -17,6 +17,7 @@ import { formatMoney, HOME_CURRENCY } from "@/lib/money";
 import type { FxState } from "./useFxRates";
 import HoldingEditor from "./HoldingEditor";
 import HoldingDetail from "./HoldingDetail";
+import PortfolioDetail from "./PortfolioDetail";
 import { DRAG_HANDLE_CLASS, useReorder } from "../useReorder";
 
 const money0 = (n: number) => formatMoney(n, HOME_CURRENCY, 0);
@@ -52,6 +53,7 @@ export default function InvestmentsPanel({
   onChange,
   quotes,
   fx,
+  magicNumber,
 }: {
   state: InvestmentsState;
   onChange: (next: InvestmentsState) => void;
@@ -59,11 +61,15 @@ export default function InvestmentsPanel({
   quotes?: Record<string, Quote>;
   /** Live FX rates + status; foreign-currency holdings convert to the home currency. */
   fx?: FxState;
+  /** Freedom target (magic number), drawn as a reference line in the portfolio projection. */
+  magicNumber?: number | null;
 }) {
   // null = closed; a Holding = editing/adding that holding.
   const [editing, setEditing] = useState<Holding | null>(null);
   // null = overview; a holding id = its maximised detail view.
   const [detailId, setDetailId] = useState<string | null>(null);
+  // Maximised whole-portfolio projection view.
+  const [showPortfolio, setShowPortfolio] = useState(false);
 
   const rates = fx?.rates;
   // Everything totalled/charted uses home-currency amounts; editing uses the raw
@@ -97,6 +103,19 @@ export default function InvestmentsPanel({
     (h) => h.id,
     (holdings) => onChange({ holdings }),
   );
+
+  // Maximised whole-portfolio projection. Uses the home-currency state so its
+  // baseline reconciles with the summary's "Projected in 1 year".
+  if (showPortfolio) {
+    return (
+      <PortfolioDetail
+        state={homeState}
+        quotes={quotes}
+        magicNumber={magicNumber}
+        onClose={() => setShowPortfolio(false)}
+      />
+    );
+  }
 
   // Maximised single-holding view. The editor can still open on top of it.
   const detailHolding = state.holdings.find((h) => h.id === detailId);
@@ -132,6 +151,8 @@ export default function InvestmentsPanel({
           value={money0(summary.projectedValue1y)}
           accent="text-emerald"
           hint={`${growth >= 0 ? "+" : ""}${money0(growth)} from growth & contributions`}
+          onClick={state.holdings.length > 0 ? () => setShowPortfolio(true) : undefined}
+          cta={state.holdings.length > 0 ? "Explore all horizons →" : undefined}
         />
         <Stat
           label="Contributions / yr"
@@ -370,17 +391,36 @@ function Stat({
   value,
   accent = "text-foreground",
   hint,
+  onClick,
+  cta,
 }: {
   label: string;
   value: string;
   accent?: string;
   hint?: string;
+  /** When set, the stat becomes a button (e.g. to open a detail view). */
+  onClick?: () => void;
+  /** A call-to-action line shown when the stat is interactive. */
+  cta?: string;
 }) {
-  return (
-    <div className="rounded-2xl border border-border bg-surface px-5 py-4">
+  const body = (
+    <>
       <div className="text-[11px] uppercase tracking-wide text-muted">{label}</div>
       <div className={`mt-1 font-display text-2xl font-bold ${accent}`}>{value}</div>
       {hint && <div className="mt-0.5 text-xs text-muted">{hint}</div>}
-    </div>
+      {onClick && cta && <div className="mt-1 text-xs font-medium text-emerald">{cta}</div>}
+    </>
   );
+  if (onClick) {
+    return (
+      <button
+        type="button"
+        onClick={onClick}
+        className="rounded-2xl border border-border bg-surface px-5 py-4 text-left transition-colors hover:border-emerald/50"
+      >
+        {body}
+      </button>
+    );
+  }
+  return <div className="rounded-2xl border border-border bg-surface px-5 py-4">{body}</div>;
 }

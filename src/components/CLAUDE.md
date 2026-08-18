@@ -41,7 +41,13 @@ month" — those are **derived from the Investments component** (portfolio `tota
 Investments →" link that switches to that view; only `currentAge` stays an editable dial there.
 Then `buckets/BucketsPanel`, `investments/InvestmentsPanel` (portfolio value + by-kind breakdown +
 1-year look-ahead, with `investments/HoldingEditor` as the add/edit modal — which also captures
-the per-holding `history`).
+the per-holding `history`). The holding cards **drag-to-reorder** via the shared `useReorder`
+hook (`src/components/useReorder.ts`, native HTML5 DnD with a FLIP glide); buckets cards use the
+same. Clicking the **"Projected in 1 year"** summary stat **maximises the whole portfolio** into
+`investments/PortfolioDetail` — the same detail shell driven by `projectPortfolio`, with a
+horizon selector (1y–30y), extra-contribution + growth-adjustment what-if levers, and the
+**magic number drawn as a reference line** (passed down from `FreedomApp` as `magicNumber`) so you
+can read the year the portfolio crosses into freedom.
 
 ## The maximise-to-detail shell (`src/components/detail/`)
 
