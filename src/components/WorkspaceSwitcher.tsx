@@ -57,6 +57,7 @@ export default function WorkspaceSwitcher({
     <div className="relative">
       <button
         type="button"
+        data-testid="workspace-switcher"
         onClick={() => setOpen((o) => !o)}
         disabled={pending}
         className="flex items-center gap-1.5 rounded-full border border-border bg-surface px-3 py-1 transition-colors hover:text-foreground disabled:opacity-60"
@@ -75,7 +76,10 @@ export default function WorkspaceSwitcher({
             className="fixed inset-0 z-10 cursor-default"
             onClick={() => setOpen(false)}
           />
-          <div className="absolute right-0 z-20 mt-2 w-56 rounded-2xl border border-border bg-surface p-1 shadow-xl">
+          <div
+            data-testid="workspace-menu"
+            className="absolute right-0 z-20 mt-2 w-56 rounded-2xl border border-border bg-surface p-1 shadow-xl"
+          >
             {workspaces.map((w) => (
               <button
                 key={w.id}
