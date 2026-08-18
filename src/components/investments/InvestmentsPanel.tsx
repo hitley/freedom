@@ -17,6 +17,7 @@ import { formatMoney, HOME_CURRENCY } from "@/lib/money";
 import type { FxState } from "./useFxRates";
 import HoldingEditor from "./HoldingEditor";
 import HoldingDetail from "./HoldingDetail";
+import { DRAG_HANDLE_CLASS, useReorder } from "../useReorder";
 
 const money0 = (n: number) => formatMoney(n, HOME_CURRENCY, 0);
 const money2 = (n: number) => formatMoney(n, HOME_CURRENCY, 2);
@@ -89,6 +90,13 @@ export default function InvestmentsPanel({
     setEditing(null);
     if (detailId === id) setDetailId(null);
   };
+
+  // Drag-to-reorder the holdings; the new order persists like any other edit.
+  const reorder = useReorder(
+    state.holdings,
+    (h) => h.id,
+    (holdings) => onChange({ holdings }),
+  );
 
   // Maximised single-holding view. The editor can still open on top of it.
   const detailHolding = state.holdings.find((h) => h.id === detailId);
@@ -190,11 +198,12 @@ export default function InvestmentsPanel({
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {state.holdings.map((holding) => {
+          {reorder.orderedItems.map((holding) => {
             const v = holdingView(convertHolding(holding, rates), quotes);
             const meta = kindMeta(holding.kind);
             const freq = holding.contribution?.recurrence.freq;
             const fc = foreignCurrency(holding);
+            const isDragging = reorder.dragId === holding.id;
             return (
               <div
                 key={holding.id}
@@ -207,10 +216,24 @@ export default function InvestmentsPanel({
                     setDetailId(holding.id);
                   }
                 }}
-                className="cursor-pointer rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-muted/50"
+                {...reorder.itemProps(holding.id)}
+                className={`group cursor-pointer rounded-2xl border p-5 hover:border-muted/50 ${
+                  isDragging
+                    ? "border-dashed border-emerald/60 bg-emerald/5 opacity-70 shadow-lg"
+                    : "border-border bg-surface"
+                }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      aria-label={`Reorder ${holding.name || "holding"}`}
+                      title="Drag to reorder (or focus and use arrow keys)"
+                      className={`${DRAG_HANDLE_CLASS} opacity-0 group-hover:opacity-100 focus-visible:opacity-100`}
+                      {...reorder.handleProps(holding.id)}
+                    >
+                      ⠿
+                    </button>
                     <span className="text-2xl">{meta?.glyph}</span>
                     <div>
                       <div className="font-display text-base font-semibold leading-tight">

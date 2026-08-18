@@ -18,6 +18,7 @@ import BucketsTimeline from "./BucketsTimeline";
 import BucketEditor from "./BucketEditor";
 import BucketDetail from "./BucketDetail";
 import AccountsEditor from "./AccountsEditor";
+import { DRAG_HANDLE_CLASS, useReorder } from "../useReorder";
 
 const AS_OF = [
   { id: 0, label: "Today" },
@@ -104,6 +105,13 @@ export default function BucketsPanel({
     setEditingBucket(null);
     if (detailId === id) setDetailId(null);
   };
+
+  // Drag-to-reorder the buckets; the new order persists like any other edit.
+  const reorder = useReorder(
+    state.buckets,
+    (b) => b.id,
+    (buckets) => onChange({ ...state, buckets }),
+  );
 
   // Maximised single-bucket view. The editor can still open on top of it.
   const detailBucket = state.buckets.find((b) => b.id === detailId);
@@ -269,13 +277,14 @@ export default function BucketsPanel({
         </div>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
-          {state.buckets.map((bucket) => {
+          {reorder.orderedItems.map((bucket) => {
             const v = bucketView(bucket);
             const pct = v.fundedPct === null ? null : Math.round(v.fundedPct * 100);
             const hitDate =
               bucket.target && v.remaining > 0
                 ? projectedTargetDate(longTimeline, bucket.id, bucket.target)
                 : null;
+            const isDragging = reorder.dragId === bucket.id;
             return (
               <div
                 key={bucket.id}
@@ -288,10 +297,24 @@ export default function BucketsPanel({
                     setDetailId(bucket.id);
                   }
                 }}
-                className="cursor-pointer rounded-2xl border border-border bg-surface p-5 transition-colors hover:border-muted/50"
+                {...reorder.itemProps(bucket.id)}
+                className={`group cursor-pointer rounded-2xl border p-5 hover:border-muted/50 ${
+                  isDragging
+                    ? "border-dashed border-emerald/60 bg-emerald/5 opacity-70 shadow-lg"
+                    : "border-border bg-surface"
+                }`}
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-center gap-2.5">
+                    <button
+                      type="button"
+                      aria-label={`Reorder ${bucket.name || "bucket"}`}
+                      title="Drag to reorder (or focus and use arrow keys)"
+                      className={`${DRAG_HANDLE_CLASS} opacity-0 group-hover:opacity-100 focus-visible:opacity-100`}
+                      {...reorder.handleProps(bucket.id)}
+                    >
+                      ⠿
+                    </button>
                     <span className="text-2xl">{bucket.glyph}</span>
                     <div>
                       <div className="font-display text-base font-semibold leading-tight">
