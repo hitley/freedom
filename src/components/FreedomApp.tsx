@@ -387,16 +387,34 @@ export default function FreedomApp({
     () => summariseInvestments(investmentsInHome),
     [investmentsInHome],
   );
+  // The real return is *derived* from the portfolio's blended expected return by
+  // default — one number, set per holding, so the Trajectory and the whole-portfolio
+  // projection can't disagree. The user can flip to "Custom" to dial it manually.
+  const derivedReturnPct = investmentsSummary.blendedReturnPct;
+  const canDeriveReturn = derivedReturnPct !== null;
+  const [deriveReturn, setDeriveReturn] = useState(true);
+  const usingDerivedReturn = deriveReturn && canDeriveReturn;
+
   const effectiveInputs = useMemo<FinancialInputs>(
     () => ({
       ...inputs,
       currentInvested: investmentsSummary.totalValue,
       monthlyContribution: Math.round(investmentsSummary.annualContributions / 12),
+      realReturnPct: usingDerivedReturn ? (derivedReturnPct as number) : inputs.realReturnPct,
     }),
-    [inputs, investmentsSummary],
+    [inputs, investmentsSummary, usingDerivedReturn, derivedReturnPct],
   );
 
   const proj = useMemo(() => project(effectiveInputs), [effectiveInputs]);
+
+  // Toggle derive/custom. Switching to Custom seeds the manual dial with the value
+  // it's currently showing (the derived one), so overriding starts where derive left off.
+  const onToggleDeriveReturn = (derive: boolean) => {
+    if (!derive && canDeriveReturn) {
+      setInputs((prev) => ({ ...prev, realReturnPct: derivedReturnPct as number }));
+    }
+    setDeriveReturn(derive);
+  };
 
   // Debounced persistence of each editable View (Component) (vision is saved explicitly on
   // completion). The hook skips its first run so seeding from the server doesn't
@@ -574,6 +592,9 @@ export default function FreedomApp({
           proj={proj}
           onChange={onChange}
           onViewInvestments={() => setView("investments")}
+          returnDerived={usingDerivedReturn}
+          canDeriveReturn={canDeriveReturn}
+          onToggleReturnDerived={onToggleDeriveReturn}
         />
       ) : view === "buckets" ? (
         <BucketsPanel state={buckets} onChange={setBuckets} />

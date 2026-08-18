@@ -121,6 +121,15 @@ describe("summarise", () => {
   it("projects forward beyond today's value (growth + contributions + DRP)", () => {
     expect(s.projectedValue1y).toBeGreaterThan(s.totalValue);
   });
+
+  it("blends expected return value-weighted, folding in DRP yield", () => {
+    // super: 100k @ 6% ; etf: 9k @ (5% + 4% DRP) = 9%  →  (100k·6 + 9k·9) / 109k
+    expect(s.blendedReturnPct).toBeCloseTo((100_000 * 6 + 9_000 * 9) / 109_000, 6);
+  });
+
+  it("has no blended return for an empty portfolio", () => {
+    expect(summarise({ holdings: [] }).blendedReturnPct).toBeNull();
+  });
 });
 
 describe("simulate", () => {

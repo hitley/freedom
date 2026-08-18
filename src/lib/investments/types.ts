@@ -197,6 +197,12 @@ export interface InvestmentsSummary {
   annualDividends: number;
   /** Projected total value one year out (growth + contributions + DRP). */
   projectedValue1y: number;
+  /**
+   * Value-weighted blended expected return across holdings (% per year, incl. DRP
+   * yield). This is the single growth rate the whole-portfolio and freedom
+   * projections agree on; `null` when there's nothing to weight (empty portfolio).
+   */
+  blendedReturnPct: number | null;
 }
 
 /** Human labels for holding kinds, for selects and chips. First is the default. */

@@ -316,6 +316,7 @@ export function summarise(
   let totalValue = 0;
   let annualContributions = 0;
   let annualDividends = 0;
+  let weightedReturn = 0; // Σ value × assumed return, for the value-weighted blend
 
   for (const h of state.holdings) {
     const value = holdingValue(h, quotes);
@@ -323,6 +324,7 @@ export function summarise(
     byKindMap.set(h.kind, (byKindMap.get(h.kind) ?? 0) + value);
     annualContributions += annualContribution(h);
     annualDividends += annualDividend(h, quotes);
+    weightedReturn += value * assumedAnnualGrowthPct(h);
   }
 
   const today = startOfDay(new Date());
@@ -334,6 +336,7 @@ export function summarise(
     annualContributions,
     annualDividends,
     projectedValue1y: oneYear.total[oneYear.total.length - 1] ?? totalValue,
+    blendedReturnPct: totalValue > 0 ? weightedReturn / totalValue : null,
   };
 }
 

@@ -39,6 +39,12 @@ month" — those are **derived from the Investments component** (portfolio `tota
 `annualContributions ÷ 12` via `summariseInvestments`, merged into `effectiveInputs` in
 `FreedomApp` so the projection tracks the real portfolio) and render read-only with a "From
 Investments →" link that switches to that view; only `currentAge` stays an editable dial there.
+The **Real return** in Assumptions is likewise **derived by default** — `summariseInvestments`'
+`blendedReturnPct` (value-weighted holding returns) feeds `effectiveInputs.realReturnPct`, so the
+Trajectory and the whole-portfolio projection use the *same* growth rate and can't disagree. An
+**Auto/Custom toggle** (`ReturnControl`) flips it to a manual slider to play; switching to Custom
+seeds the dial with the derived value so overriding starts where derive left off. The derive
+state is local (defaults to Auto each load), not persisted.
 Then `buckets/BucketsPanel`, `investments/InvestmentsPanel` (portfolio value + by-kind breakdown +
 1-year look-ahead, with `investments/HoldingEditor` as the add/edit modal — which also captures
 the per-holding `history`). The holding cards **drag-to-reorder** via the shared `useReorder`

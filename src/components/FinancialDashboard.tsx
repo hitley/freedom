@@ -19,11 +19,20 @@ export default function FinancialDashboard({
   proj,
   onChange,
   onViewInvestments,
+  returnDerived = false,
+  canDeriveReturn = false,
+  onToggleReturnDerived,
 }: {
   inputs: FinancialInputs;
   proj: Projection;
   onChange: (key: keyof FinancialInputs, value: number) => void;
   onViewInvestments?: () => void;
+  /** True when the real return is currently derived from the portfolio's blend. */
+  returnDerived?: boolean;
+  /** Whether deriving is possible (there are holdings to blend). */
+  canDeriveReturn?: boolean;
+  /** Flip between derived and custom (manual) real return. */
+  onToggleReturnDerived?: (derive: boolean) => void;
 }) {
   const set = (key: keyof FinancialInputs) => (v: number) => onChange(key, v);
 
@@ -149,18 +158,18 @@ export default function FinancialDashboard({
         </ControlGroup>
 
         <ControlGroup title="Assumptions" hint="What you expect of the market">
-          <Dial
-            label="Real return"
-            display={`${inputs.realReturnPct.toFixed(1)}%`}
-            value={inputs.realReturnPct}
-            min={2}
-            max={9}
-            step={0.5}
+          <ReturnControl
+            valuePct={inputs.realReturnPct}
+            derived={returnDerived}
+            canDerive={canDeriveReturn}
+            onToggle={onToggleReturnDerived}
             onChange={set("realReturnPct")}
+            onViewInvestments={onViewInvestments}
           />
           <p className="text-xs leading-relaxed text-muted">
-            Real return is after inflation. The magic number is your spend (less other
-            income) divided by the withdrawal rate.
+            {returnDerived
+              ? "Blended from your holdings’ expected returns, so this matches the whole-portfolio projection. Switch to Custom to override and play."
+              : "Real return is after inflation. The magic number is your spend (less other income) divided by the withdrawal rate."}
           </p>
         </ControlGroup>
       </section>
@@ -236,6 +245,78 @@ function Tracked({
         </button>
       ) : (
         <span className="text-xs text-muted">From {source}</span>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The real-return control. By default the value is **derived** from the portfolio's
+ * blended expected return (read-only, with a link through to Investments), so the
+ * Trajectory and the whole-portfolio projection agree. A Derived/Custom toggle
+ * (only shown when there are holdings to derive from) flips it to a manual slider.
+ */
+function ReturnControl({
+  valuePct,
+  derived,
+  canDerive,
+  onToggle,
+  onChange,
+  onViewInvestments,
+}: {
+  valuePct: number;
+  derived: boolean;
+  canDerive: boolean;
+  onToggle?: (derive: boolean) => void;
+  onChange: (v: number) => void;
+  onViewInvestments?: () => void;
+}) {
+  return (
+    <div className="block">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="text-sm text-muted">Real return</span>
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-medium text-foreground">{valuePct.toFixed(1)}%</span>
+          {canDerive && onToggle && (
+            <div className="inline-flex rounded-full border border-border bg-surface-2 p-0.5 text-[11px]">
+              {([["Auto", true] as const, ["Custom", false] as const]).map(([lbl, d]) => (
+                <button
+                  key={lbl}
+                  type="button"
+                  onClick={() => onToggle(d)}
+                  className={`rounded-full px-2 py-0.5 transition-colors ${
+                    derived === d ? "bg-surface text-foreground" : "text-muted hover:text-foreground"
+                  }`}
+                >
+                  {lbl}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      {derived ? (
+        onViewInvestments ? (
+          <button
+            type="button"
+            onClick={onViewInvestments}
+            className="text-xs text-emerald hover:underline"
+          >
+            Blended from your holdings →
+          </button>
+        ) : (
+          <span className="text-xs text-muted">Blended from your holdings</span>
+        )
+      ) : (
+        <input
+          type="range"
+          min={2}
+          max={9}
+          step={0.5}
+          value={valuePct}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="w-full accent-emerald"
+        />
       )}
     </div>
   );

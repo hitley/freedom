@@ -7,7 +7,9 @@ directly-entered value — super, cash). It optionally carries a recurring **`Co
 (reusing the buckets recurrence engine) and a **`Drp`** (dividend reinvestment — an annual
 yield reinvested into the holding, compounding value instead of paying cash). `holdingValue`
 / `holdingView` / `summarise` give the today snapshot (total, by-kind split, annual
-contributions + dividends), and `simulate(state, from, to)` projects every holding forward on
+contributions + dividends, plus **`blendedReturnPct`** — the value-weighted expected return
+across holdings, the single growth rate the Trajectory derives from so it can't disagree with
+the whole-portfolio projection), and `simulate(state, from, to)` projects every holding forward on
 a monthly grid (compounding growth + reinvested DRP, adding contributions on their real
 scheduled dates) into an `InvestmentsTimeline`. A holding can also carry recorded **`history`**
 (manual `HoldingSnapshot`s — value + money paid in on a date, e.g. yearly super statements);
