@@ -177,6 +177,19 @@ inflate the freedom date. Investment-property equity is **user-toggleable** per 
 *sell-to-fund* and *hold-for-income*. Full design, forks, and engine sketch in
 [`design-notes/005-property-mortgages-and-equity.md`](design-notes/005-property-mortgages-and-equity.md).
 
+### Dynamic accounts & bucket funding — designed, not built
+
+Make buckets' **accounts dynamic** (recurring `AccountFlow`s — wages in, mortgage/investments/bills
+out — so balances move over time, with cross-component flows *derived* not retyped), and replace
+the fiddly per-bucket recurring cashflows with an account-level **funding plan** that distributes
+money into that account's buckets by a **per-account strategy toggle** (target-date / priority /
+even) from either the **computed surplus** or a fixed override. Reuses drag-reorder for priority
+and the spending budget's bottom-up shape for target-date mode; links to Property (mortgage P&I as
+a derived outflow) and the ES spine (flows = the ongoing event stream). Full design, forks, and
+engine sketch in
+[`design-notes/006-dynamic-accounts-and-bucket-funding.md`](design-notes/006-dynamic-accounts-and-bucket-funding.md).
+(The related bucket-detail **axis-pinning** fix already shipped.)
+
 ### Domains 2 & 3 (Time & Health) — coming soon
 
 Both are empty **Domain** slots (C2) that slot into the same **vision → current-state →
