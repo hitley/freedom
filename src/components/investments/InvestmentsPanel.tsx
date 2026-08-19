@@ -13,6 +13,7 @@ import {
   type InvestmentsState,
   type Quote,
 } from "@/lib/investments";
+import { cadenceLabel } from "@/lib/buckets";
 import { formatMoney, HOME_CURRENCY } from "@/lib/money";
 import type { FxState } from "./useFxRates";
 import HoldingEditor from "./HoldingEditor";
@@ -226,7 +227,7 @@ export default function InvestmentsPanel({
           {reorder.orderedItems.map((holding) => {
             const v = holdingView(convertHolding(holding, rates), quotes);
             const meta = kindMeta(holding.kind);
-            const freq = holding.contribution?.recurrence.freq;
+            const recurrence = holding.contribution?.recurrence;
             const fc = foreignCurrency(holding);
             const isDragging = reorder.dragId === holding.id;
             return (
@@ -298,10 +299,10 @@ export default function InvestmentsPanel({
                 )}
 
                 <div className="mt-3 flex flex-wrap gap-1.5">
-                  {v.annualContribution > 0 && freq && (
+                  {v.annualContribution > 0 && recurrence && (
                     <Chip>
                       {formatMoney(holding.contribution!.amount, fc ?? HOME_CURRENCY, 0)}{" "}
-                      {freqLabel(freq)}
+                      {cadenceLabel(recurrence).toLowerCase()}
                     </Chip>
                   )}
                   {holding.drp && (
@@ -338,9 +339,6 @@ const KIND_DOT = KIND_BAR;
 
 const formatUnits = (n: number) =>
   n.toLocaleString("en-GB", { maximumFractionDigits: 4 });
-
-const freqLabel = (freq: string) =>
-  freq === "weekly" ? "weekly" : freq === "monthly" ? "monthly" : "once";
 
 const drpFreqLabel = (id: string) =>
   DIVIDEND_FREQS.find((f) => f.id === id)?.label.toLowerCase() ?? id;

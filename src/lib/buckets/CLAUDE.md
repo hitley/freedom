@@ -18,7 +18,10 @@ rejected at the schema.
 
 > **The recurrence engine (`schedule.ts`) is shared** — `investments` contributions and
 > `spending` recurring expenses reuse `occurrences` / `addMonths` / `startOfDay` / `toISO`
-> from here rather than reinventing scheduling.
+> from here rather than reinventing scheduling. It also owns **`cadenceLabel(recurrence)`** —
+> the human label for a `{ freq, interval }` cadence ("Weekly", "Fortnightly", "Quarterly",
+> "Every 5 weeks") — so every Component that speaks the cadence language shares one vocabulary
+> (spending re-exports it; the investments holding card lower-cases it for its contribution chip).
 
 See `src/lib/CLAUDE.md` for shared conventions; `docs/architecture/components/buckets.md`
 for the generated structural view.

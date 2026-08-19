@@ -7,6 +7,9 @@
  */
 
 import { HOME_SYMBOL } from "@/lib/money";
+import { DatePicker } from "./DatePicker";
+
+export { DatePicker } from "./DatePicker";
 
 /** A labelled block: a small caption above an arbitrary control. */
 export function Field({
@@ -118,7 +121,11 @@ export function Select({
   );
 }
 
-/** A compact native date picker styled to match the form chrome. */
+/**
+ * A date picker styled to match the form chrome. Backed by the custom calendar
+ * popover ({@link DatePicker}) with day → month → year drill-down, so it's the
+ * same control everywhere date entry appears.
+ */
 export function DateInput({
   value,
   onChange,
@@ -126,12 +133,5 @@ export function DateInput({
   value: string;
   onChange: (v: string) => void;
 }) {
-  return (
-    <input
-      type="date"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm text-foreground outline-none focus:border-emerald [color-scheme:dark]"
-    />
-  );
+  return <DatePicker value={value} onChange={onChange} />;
 }

@@ -32,6 +32,11 @@ const HORIZONS = [
   { id: "30y", label: "30 yr", months: 360 },
 ] as const;
 
+// The what-if lever bounds (kept in sync with the sliders below). MAX_EXTRA is used
+// to size a stable y-axis ceiling so dragging the contribution lever doesn't rescale.
+const MAX_EXTRA = 5000;
+const GROWTH_DELTA = 10;
+
 /**
  * The maximised, single-holding view. It tells the holding's whole story on one
  * timeline: the **actual** values you've recorded in the past (left of "today"),
@@ -55,20 +60,44 @@ export default function HoldingDetail({
   const currentValue = holdingValue(holding, quotes);
   const periods = useMemo(() => holdingHistory(holding), [holding]);
 
-  // What-if levers, seeded from the holding's own assumptions.
-  const [monthly, setMonthly] = useState(() =>
-    Math.round(monthlyContributionOf(holding)),
-  );
-  const [growthPct, setGrowthPct] = useState(() => assumedAnnualGrowthPct(holding));
+  // What-if levers, mirroring the whole-portfolio view: both are neutral (0) at rest
+  // and layer *on top of* the holding's own assumptions — an extra monthly contribution
+  // and a growth nudge — so adding money always grows the line (never dips below the
+  // as-is baseline). The holding's real contribution/growth are the seeded baseline.
+  const seedMonthly = useMemo(() => Math.round(monthlyContributionOf(holding)), [holding]);
+  const seedGrowthPct = useMemo(() => assumedAnnualGrowthPct(holding), [holding]);
+  const [extraMonthly, setExtraMonthly] = useState(0);
+  const [growthDeltaPct, setGrowthDeltaPct] = useState(0);
   const [horizon, setHorizon] = useState<(typeof HORIZONS)[number]["id"]>("10y");
 
   const months = HORIZONS.find((h) => h.id === horizon)!.months;
+  const leversActive = extraMonthly !== 0 || growthDeltaPct !== 0;
+  const monthly = seedMonthly + extraMonthly;
+  const growthPct = seedGrowthPct + growthDeltaPct;
 
   const today = useMemo(() => startOfDay(new Date()), []);
+  const end = useMemo(() => addMonths(today, months), [today, months]);
   const projection = useMemo(
-    () => projectHolding(currentValue, today, addMonths(today, months), monthly, growthPct),
-    [currentValue, today, months, monthly, growthPct],
+    () => projectHolding(currentValue, today, end, monthly, growthPct),
+    [currentValue, today, end, monthly, growthPct],
   );
+  // The untouched "as-is" path — computed only when a lever moves, to overlay for comparison.
+  const baseline = useMemo(
+    () =>
+      leversActive
+        ? projectHolding(currentValue, today, end, seedMonthly, seedGrowthPct)
+        : null,
+    [leversActive, currentValue, today, end, seedMonthly, seedGrowthPct],
+  );
+  // A stable y-axis ceiling: the projection at the *maximum* extra contribution (at the
+  // current growth). The axis is sized to the biggest the contribution lever can make the
+  // line, so dragging that lever grows the line into a fixed frame instead of rescaling the
+  // axis — the portfolio's magic-number-anchored feel, without a magic number. Depends on
+  // growth (and horizon), not on the current extra, so a contribution drag never rescales.
+  const axisMax = useMemo(() => {
+    const ceiling = projectHolding(currentValue, today, end, seedMonthly + MAX_EXTRA, growthPct);
+    return ceiling.value[ceiling.value.length - 1] ?? currentValue;
+  }, [currentValue, today, end, seedMonthly, growthPct]);
 
   // Actual recorded points (oldest-first), as plottable date/value pairs.
   const actuals = useMemo(
@@ -76,10 +105,15 @@ export default function HoldingDetail({
     [periods],
   );
   const projected = projection.dates.map((d, i) => ({ t: d.getTime(), v: projection.value[i] }));
+  const compare = baseline
+    ? { points: baseline.dates.map((d, i) => ({ t: d.getTime(), v: baseline.value[i] })), label: "As-is" }
+    : undefined;
 
   const projectedEnd = projection.value[projection.value.length - 1] ?? currentValue;
   const projContributed = projection.contributed[projection.contributed.length - 1] ?? 0;
   const projGrowth = projectedEnd - currentValue - projContributed;
+  const baselineEnd = baseline ? baseline.value[baseline.value.length - 1] ?? projectedEnd : projectedEnd;
+  const delta = projectedEnd - baselineEnd;
 
   // History totals.
   const totalContributed = periods.reduce((sum, p) => sum + p.contributed, 0);
@@ -118,7 +152,11 @@ export default function HoldingDetail({
           label={`Projected in ${months / 12} years`}
           value={gbp0.format(projectedEnd)}
           accent="text-emerald"
-          hint={`${compactMoney(projGrowth)} growth · ${compactMoney(projContributed)} added`}
+          hint={
+            leversActive
+              ? `${delta >= 0 ? "+" : ""}${compactMoney(delta)} vs as-is · ${compactMoney(projContributed)} added`
+              : `${compactMoney(projGrowth)} growth · ${compactMoney(projContributed)} added`
+          }
         />
         {periods.length > 0 ? (
           <Stat
@@ -139,34 +177,41 @@ export default function HoldingDetail({
         title="Past & projected"
         subtitle="Actual recorded values, then where it's heading on your assumptions. Hover the chart to read any point."
         ariaLabel={`${holding.name} value over time`}
+        projectedLabel={leversActive ? "With your changes" : "Projected"}
+        compare={compare}
+        axisMax={axisMax}
         headerRight={<HorizonSelector options={HORIZONS} value={horizon} onChange={setHorizon} />}
         tooltipLines={tooltipLines}
       />
 
-      {/* what-if controls */}
+      {/* what-if levers — same model as the whole-portfolio view: layered on top of
+          the holding's own contribution + growth, so the muted "as-is" line is the
+          floor and adding money only ever grows the projection. */}
       <div className="mt-4 rounded-2xl border border-border bg-surface p-5">
-        <div className="mb-1 font-display text-base font-semibold">Projection assumptions</div>
+        <div className="mb-1 font-display text-base font-semibold">What-if levers</div>
         <p className="mb-4 text-xs text-muted">
-          Try different numbers — this only changes the projection, not your saved holding. Save them in Edit.
+          These layer on top of this holding&apos;s own contribution and growth — they only change
+          the projection, not your saved holding. Move a lever and the muted line shows its current
+          plan for comparison. Adjust the saved figures in Edit.
         </p>
         <div className="grid gap-5 sm:grid-cols-2">
           <Slider
-            label="Monthly contribution"
-            value={monthly}
-            display={gbp0.format(monthly)}
+            label="Extra monthly contribution"
+            value={extraMonthly}
+            display={`${gbp0.format(extraMonthly)}/mo`}
             min={0}
-            max={5000}
+            max={MAX_EXTRA}
             step={50}
-            onChange={setMonthly}
+            onChange={setExtraMonthly}
           />
           <Slider
-            label="Estimated growth / yr"
-            value={growthPct}
-            display={`${growthPct.toFixed(1)}%`}
-            min={0}
-            max={15}
+            label="Growth adjustment"
+            value={growthDeltaPct}
+            display={`${growthDeltaPct > 0 ? "+" : ""}${growthDeltaPct.toFixed(1)}%`}
+            min={-GROWTH_DELTA}
+            max={GROWTH_DELTA}
             step={0.5}
-            onChange={setGrowthPct}
+            onChange={setGrowthDeltaPct}
           />
         </div>
       </div>

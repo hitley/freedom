@@ -43,6 +43,7 @@ export default function ProjectionChart({
   projectedLabel = "Projected",
   reference,
   compare,
+  axisMax,
   tooltipLines,
   ariaLabel,
 }: {
@@ -59,6 +60,13 @@ export default function ProjectionChart({
   reference?: { value: number; label: string };
   /** An optional second projected line overlaid for comparison (e.g. a baseline). */
   compare?: { points: ChartPoint[]; label: string };
+  /**
+   * A stable floor for the y-axis maximum. When supplied, the axis never shrinks
+   * below this — so a caller can size the frame to the *biggest* projection its
+   * what-if levers can produce and the axis then stays put while a lever is dragged
+   * (the line grows into a fixed frame instead of the frame rescaling under it).
+   */
+  axisMax?: number;
   tooltipLines: (series: SeriesKind, idx: number) => string[];
   ariaLabel?: string;
 }) {
@@ -72,6 +80,7 @@ export default function ProjectionChart({
   const yMax =
     Math.max(
       1,
+      axisMax ?? 0,
       ...actual.map((a) => a.v),
       ...projected.map((p) => p.v),
       ...(compare?.points.map((p) => p.v) ?? []),

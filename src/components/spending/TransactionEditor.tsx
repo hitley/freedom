@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Field, MoneyInput } from "@/components/forms/primitives";
+import { DatePicker, Field, MoneyInput } from "@/components/forms/primitives";
 import { toISO } from "@/lib/buckets";
 import {
   SPENDING_CATEGORIES,
@@ -111,12 +111,7 @@ export default function TransactionEditor({
             <MoneyInput value={amount} onChange={setAmount} placeholder="50.00" />
           </Field>
           <Field label="Date">
-            <input
-              type="date"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-              className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm outline-none transition-colors focus:border-emerald"
-            />
+            <DatePicker value={date} onChange={setDate} />
           </Field>
         </div>
 

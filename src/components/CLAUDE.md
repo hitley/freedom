@@ -68,10 +68,22 @@ Clicking a holding tile **maximises** it into `investments/HoldingDetail`: one t
 the recorded past (solid line, left of a "today" divider) flowing into a dashed projection (right
 of it), driven by live what-if sliders (monthly contribution + estimated growth %, seeded from the
 holding but non-destructive), with a year-by-year growth breakdown below; "Minimise" returns to
-the overview. This **maximise-to-detail interaction is a reusable shell**: `DetailShell` (the
+the overview. Its **what-if levers mirror the whole-portfolio view exactly** — "Extra monthly
+contribution" (0→5000) and "Growth adjustment" (±10%), both **neutral at rest and layered on top
+of** the holding's own contribution + growth (not absolute seeded values). So adding money only
+ever grows the projection — it can't dip below the holding's real plan. Move a lever and the
+untouched **as-is** baseline overlays as a muted line (`ProjectionChart`'s `compare` prop) with the
+headline hint switching to "±N vs as-is". The y-axis is **pinned stable** via `ProjectionChart`'s
+`axisMax` — sized to the projection at the *maximum* extra contribution — so dragging the
+contribution lever grows the line into a fixed frame instead of rescaling the axis under it (the
+portfolio gets this for free from its magic-number reference line; holdings have no such anchor, so
+they compute the ceiling). Keeping the two levers identical to `PortfolioDetail`'s is deliberate:
+the single-holding and whole-portfolio projections must behave the same way. This **maximise-to-detail interaction is a reusable shell**: `DetailShell` (the
 glyph/title/subtitle header + Edit/Minimise chrome), `ProjectionChart` (the generic past+projected
-SVG — today divider, gridlines, hover scrubber, optional horizontal reference line, with a
-View-supplied `tooltipLines(series, idx)` callback) plus its `HorizonSelector`, and `primitives`
+SVG — today divider, gridlines, hover scrubber, optional horizontal `reference` line, an optional
+`compare` baseline line, an optional `axisMax` floor that pins the y-axis so what-if drags don't
+rescale it, with a View-supplied `tooltipLines(series, idx)` callback) plus its `HorizonSelector`,
+and `primitives`
 (`Stat`, `Slider`, `compactMoney`). `HoldingDetail` is built on it, and so is the buckets
 equivalent.
 
@@ -126,11 +138,15 @@ in the Spending view, tagged "imported").
 - **A maximised detail view = the shared shell** (above). Reuse `DetailShell` / `ProjectionChart`
   / `primitives`; don't rebuild them per View.
 - **Shared form primitives** live in `src/components/forms/primitives.tsx` (`Field`, `MoneyInput`,
-  `NumberInput`, `PercentInput`, `Select`, `DateInput`) — import them into editor modals rather
-  than re-defining; they're pure presentational field controls. View-specific sub-forms (toggles,
-  cashflow/history rows) stay in their editor. A handful of bespoke inline `<input type="date">`
-  fields (full-width, `rounded-xl`) remain inline by design where the compact `DateInput` doesn't
-  fit.
+  `NumberInput`, `PercentInput`, `Select`, `DateInput`, `DatePicker`) — import them into editor
+  modals rather than re-defining; they're pure presentational field controls. View-specific
+  sub-forms (toggles, cashflow/history rows) stay in their editor. **Date entry is the custom
+  `DatePicker`** (`src/components/forms/DatePicker.tsx`), not a native `<input type="date">`: a
+  calendar popover with **day → month → year** drill-down (click the header to zoom out, pick a
+  cell to zoom back in), rendered through a portal so an editor modal's scroll can't clip it, with
+  ISO `YYYY-MM-DD` in/out via the recurrence engine's `parseISO`/`toISO` (local midnight, no UTC
+  drift). `DateInput` is a thin wrapper over it, so every date field — including the former bespoke
+  inline ones in `HoldingEditor` (history rows) and `TransactionEditor` — is now the same control.
 - **Tailwind exposes only the base palette** (`emerald`, `gold`, `muted`, `surface`, `surface-2`,
   `border`, `foreground` — see `@theme inline` in `globals.css`). There is **no** `-dim` utility;
   shade with opacity (`bg-emerald/50`), not `bg-emerald-dim`.

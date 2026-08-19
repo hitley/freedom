@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { occurrences, parseISO, toISO } from "./schedule";
+import { cadenceLabel, occurrences, parseISO, toISO } from "./schedule";
 import type { Recurrence } from "./types";
 
 /** Expand a recurrence over a wide window and return the fired dates as ISO strings. */
@@ -52,5 +52,26 @@ describe("occurrences — count cap", () => {
     );
     // First (Jan 5) is before the window; last allowed is the 5th (Mar 2).
     expect(dates).toEqual(["2026-01-19", "2026-02-02", "2026-02-16", "2026-03-02"]);
+  });
+});
+
+describe("cadenceLabel", () => {
+  const label = (freq: Recurrence["freq"], interval?: number) =>
+    cadenceLabel({ freq, startDate: "2026-01-01", interval });
+
+  it("names the common interval shorthands", () => {
+    expect(label("weekly", 1)).toBe("Weekly");
+    expect(label("weekly", 2)).toBe("Fortnightly"); // the card-label bug: interval-2 weekly
+    expect(label("monthly", 1)).toBe("Monthly");
+    expect(label("monthly", 3)).toBe("Quarterly");
+    expect(label("monthly", 6)).toBe("Half-yearly");
+    expect(label("monthly", 12)).toBe("Yearly");
+    expect(label("once")).toBe("One-off");
+  });
+
+  it("defaults a missing interval to 1 and falls back to 'Every N …'", () => {
+    expect(label("weekly")).toBe("Weekly");
+    expect(label("weekly", 5)).toBe("Every 5 weeks");
+    expect(label("monthly", 4)).toBe("Every 4 months");
   });
 });

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import {
   DateInput,
+  DatePicker,
   Field,
   MoneyInput,
   NumberInput,
@@ -420,12 +421,7 @@ function HistoryRows({
         return (
           <div key={i} className="space-y-1">
             <div className="grid grid-cols-[1fr_1fr_1fr_auto] items-center gap-2">
-              <input
-                type="date"
-                value={s.date}
-                onChange={(e) => setRow(i, { date: e.target.value })}
-                className="w-full rounded-lg border border-border bg-surface px-2 py-2 text-sm outline-none focus:border-emerald"
-              />
+              <DatePicker value={s.date} onChange={(v) => setRow(i, { date: v })} />
               <MoneyInput
                 value={s.value ? String(s.value) : ""}
                 onChange={(v) => setRow(i, { value: Number(v) || 0 })}

@@ -168,8 +168,8 @@ export default function PortfolioDetail({
             label="Growth adjustment"
             value={growthDeltaPct}
             display={`${growthDeltaPct > 0 ? "+" : ""}${growthDeltaPct.toFixed(1)}%`}
-            min={-3}
-            max={3}
+            min={-10}
+            max={10}
             step={0.5}
             onChange={setGrowthDeltaPct}
           />
