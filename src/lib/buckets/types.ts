@@ -28,6 +28,50 @@ export interface Account {
   kind: AccountKind;
   /** Total balance in this account today, in GBP. */
   balance: number;
+  /**
+   * Recurring movements into/out of this account that aren't tied to a bucket —
+   * salary in, a direct-debit bill out, etc. Cross-component flows (an investment
+   * contribution, a mortgage P&I payment) are *derived* from their source Component
+   * and injected at projection time rather than stored here (see design-notes/006).
+   */
+  flows?: AccountFlow[];
+  /** How this account automatically fills its buckets each period, if at all. */
+  funding?: FundingPlan;
+}
+
+/**
+ * A recurring movement of money into or out of an account, independent of any
+ * bucket (salary, a bill). Reuses the same `Recurrence` engine as bucket cashflows.
+ */
+export interface AccountFlow {
+  id: string;
+  label: string;
+  kind: FlowKind;
+  /** Amount per occurrence, in GBP. */
+  amount: number;
+  recurrence: Recurrence;
+}
+
+/**
+ * How an account's funding plan spreads money across *its* buckets:
+ * - `target-date` — each dated bucket gets `remaining ÷ months-left` (bottom-up);
+ * - `priority`    — fill buckets in order (their display order), overflow to the next;
+ * - `even`        — split equally across buckets not yet at target.
+ */
+export type FundingStrategy = "target-date" | "priority" | "even";
+
+/** An account-level rule that automatically fills its buckets each period. */
+export interface FundingPlan {
+  strategy: FundingStrategy;
+  /** When the sweep happens. */
+  cadence: Recurrence;
+  /**
+   * Fixed amount to sweep per occurrence, in GBP. Omit to sweep the account's
+   * *computed surplus* (its unallocated balance) instead of a fixed figure.
+   */
+  amount?: number;
+  /** Portion of the surplus to sweep (0–100) when `amount` is omitted. Default 100. */
+  sharePct?: number;
 }
 
 /** A slice of one account assigned to a bucket. Bucket balance = sum of these. */
@@ -90,6 +134,12 @@ export interface Bucket {
   target?: number;
   /** Optional deadline for the goal — the "moment in time" a dated bucket aims for. */
   targetDate?: string;
+  /**
+   * The account this bucket is funded from — used by that account's `FundingPlan`
+   * to decide which buckets it fills. When unset, falls back to the bucket's main
+   * (largest-allocation) account, so existing buckets keep working.
+   */
+  sourceAccountId?: string;
   /** Slices of accounts that make up this bucket's balance today. */
   allocations: Allocation[];
   /** Recurring/one-off payments that move money in and out over time. */

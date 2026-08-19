@@ -1,11 +1,13 @@
 import { z } from "zod";
 import type {
   Account,
+  AccountFlow,
   AccountView,
   Bucket,
   BucketsState,
   BucketsSummary,
   BucketView,
+  FundingStrategy,
 } from "./types";
 import { occurrences, startOfDay, addMonths } from "./schedule";
 
@@ -102,21 +104,129 @@ export interface Timeline {
   anyShortfall: boolean;
 }
 
-interface DueEvent {
+/** The account a bucket is funded from: its explicit source, else its main account. */
+export function fundingAccountId(bucket: Bucket): string | undefined {
+  return bucket.sourceAccountId ?? mainAccountId(bucket);
+}
+
+/** Whole calendar months from `from` to `to`, floored at 0. */
+function monthsUntil(from: Date, to: Date): number {
+  return Math.max(
+    0,
+    (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth()),
+  );
+}
+
+/** A bucket reduced to just what funding distribution needs. */
+export interface FundingBucket {
+  id: string;
+  balance: number;
+  target?: number;
+  targetDate?: string;
+}
+
+/**
+ * Split `amount` across `buckets` per `strategy`, returning how much each bucket
+ * receives (never more than its remaining-to-target). Buckets are considered in the
+ * order given — that order *is* the priority for `priority`, and the tiebreak for the
+ * others. Pure; `asOf` drives the `target-date` required-per-month maths. See
+ * `design-notes/006` for the model.
+ */
+export function distributeFunding(
+  amount: number,
+  buckets: FundingBucket[],
+  strategy: FundingStrategy,
+  asOf: Date,
+): Record<string, number> {
+  const give: Record<string, number> = {};
+  const EPS = 1e-6;
+  // Remaining-to-target *after* what we've already provisionally given this call.
+  const remaining = (b: FundingBucket) =>
+    b.target != null ? Math.max(0, b.target - (b.balance + (give[b.id] ?? 0))) : Infinity;
+  const add = (id: string, g: number) => {
+    if (g > 0) give[id] = (give[id] ?? 0) + g;
+  };
+
+  let left = amount;
+  if (left <= EPS) return give;
+
+  if (strategy === "priority") {
+    for (const b of buckets) {
+      if (left <= EPS) break;
+      const g = Math.min(remaining(b), left);
+      add(b.id, g);
+      left -= g;
+    }
+    return give;
+  }
+
+  if (strategy === "even") {
+    // Repeated passes so a bucket that hits its target releases its share to the rest.
+    for (let pass = 0; pass < buckets.length + 1 && left > EPS; pass++) {
+      const eligible = buckets.filter((b) => remaining(b) > EPS);
+      if (eligible.length === 0) break;
+      const share = left / eligible.length;
+      let spent = 0;
+      for (const b of eligible) {
+        const g = Math.min(remaining(b), share);
+        add(b.id, g);
+        spent += g;
+      }
+      if (spent <= EPS) break;
+      left -= spent;
+    }
+    return give;
+  }
+
+  // target-date: each dated bucket needs `remaining ÷ months-left` this period. Fund
+  // those needs in order (a shortfall falls to the earliest-listed), then spread any
+  // leftover across remaining capacity as a priority waterfall.
+  for (const b of buckets) {
+    if (left <= EPS) break;
+    if (b.target == null || !b.targetDate) continue;
+    const rem = remaining(b);
+    if (rem <= EPS) continue;
+    const need = Math.min(rem, rem / Math.max(1, monthsUntil(asOf, startOfDay(new Date(b.targetDate)))));
+    const g = Math.min(need, left);
+    add(b.id, g);
+    left -= g;
+  }
+  for (const b of buckets) {
+    if (left <= EPS) break;
+    const g = Math.min(remaining(b), left);
+    add(b.id, g);
+    left -= g;
+  }
+  return give;
+}
+
+/** A recurring account movement not tied to a bucket, carrying its account id. */
+export type ScopedAccountFlow = AccountFlow & { accountId: string };
+
+/** One dated thing that happens in the simulation, ordered within a day by `order`. */
+interface SimEvent {
   date: Date;
-  bucketId: string;
-  accountId: string | undefined;
-  kind: "in" | "out";
-  amount: number;
-  drain: boolean;
+  order: number; // 0 = money in, 1 = money out, 2 = funding sweep (after in/out settle)
+  apply: () => void;
 }
 
 /**
  * Project buckets + accounts from `from` to `to`. Snapshots are taken on a
  * monthly grid merged with every actual event date, so the lines are smooth and
  * still capture sharp drops (e.g. a holiday spend) exactly when they happen.
+ *
+ * Beyond bucket cashflows this now replays **account flows** (salary in, bills/mortgage
+ * out — plus any `injectedFlows` *derived* from other Components, e.g. investment
+ * contributions) and **funding sweeps** (an account's `FundingPlan` moving its
+ * unallocated surplus into its buckets each period). Accounts with neither behave
+ * exactly as before, so existing data is untouched.
  */
-export function simulate(state: BucketsState, from: Date, to: Date): Timeline {
+export function simulate(
+  state: BucketsState,
+  from: Date,
+  to: Date,
+  opts: { injectedFlows?: ScopedAccountFlow[] } = {},
+): Timeline {
   const start = startOfDay(from);
   const end = startOfDay(to);
 
@@ -131,24 +241,96 @@ export function simulate(state: BucketsState, from: Date, to: Date): Timeline {
     acctAllocated[a.id] = accountView(a, state.buckets).allocated;
   }
 
-  // Expand all scheduled cashflows into concrete dated events.
-  const events: DueEvent[] = [];
+  // Which buckets each funding account fills, in priority (display) order.
+  const bucketsByFunder = new Map<string, Bucket[]>();
+  for (const b of state.buckets) {
+    const acc = fundingAccountId(b);
+    if (!acc) continue;
+    (bucketsByFunder.get(acc) ?? bucketsByFunder.set(acc, []).get(acc)!).push(b);
+  }
+
+  const events: SimEvent[] = [];
+
+  // Bucket cashflows: move a bucket, and the account they flow through.
   for (const b of state.buckets) {
     const fallbackAccount = mainAccountId(b);
     for (const cf of b.cashflows) {
+      const accId = cf.accountId ?? fallbackAccount;
+      const sign = cf.kind === "in" ? 1 : -1;
+      const drain = cf.kind === "out" && !!cf.drain;
       for (const date of occurrences(cf.recurrence, start, end)) {
         events.push({
           date,
-          bucketId: b.id,
-          accountId: cf.accountId ?? fallbackAccount,
-          kind: cf.kind,
-          amount: cf.amount,
-          drain: cf.kind === "out" && !!cf.drain,
+          order: cf.kind === "in" ? 0 : 1,
+          apply: () => {
+            const amount = drain ? Math.max(0, bucketBal[b.id] ?? 0) : cf.amount;
+            bucketBal[b.id] = (bucketBal[b.id] ?? 0) + sign * amount;
+            if (accId && accId in acctBal) {
+              acctBal[accId] += sign * amount;
+              acctAllocated[accId] += sign * amount;
+            }
+          },
         });
       }
     }
   }
-  events.sort((a, b) => a.date.getTime() - b.date.getTime());
+
+  // Account flows (stored + injected/derived): move an account balance only.
+  const allFlows: ScopedAccountFlow[] = [
+    ...state.accounts.flatMap((a) => (a.flows ?? []).map((f) => ({ ...f, accountId: a.id }))),
+    ...(opts.injectedFlows ?? []),
+  ];
+  for (const f of allFlows) {
+    if (!(f.accountId in acctBal)) continue;
+    const sign = f.kind === "in" ? 1 : -1;
+    for (const date of occurrences(f.recurrence, start, end)) {
+      events.push({
+        date,
+        order: f.kind === "in" ? 0 : 1,
+        apply: () => {
+          acctBal[f.accountId] += sign * f.amount;
+        },
+      });
+    }
+  }
+
+  // Funding sweeps: reclassify an account's unallocated surplus into its buckets.
+  for (const a of state.accounts) {
+    if (!a.funding) continue;
+    const plan = a.funding;
+    for (const date of occurrences(plan.cadence, start, end)) {
+      events.push({
+        date,
+        order: 2,
+        apply: () => {
+          const unallocated = Math.max(0, (acctBal[a.id] ?? 0) - (acctAllocated[a.id] ?? 0));
+          const sweep =
+            plan.amount != null
+              ? Math.min(plan.amount, unallocated)
+              : unallocated * ((plan.sharePct ?? 100) / 100);
+          if (sweep <= 0) return;
+          const funded = bucketsByFunder.get(a.id) ?? [];
+          const give = distributeFunding(
+            sweep,
+            funded.map((b) => ({
+              id: b.id,
+              balance: bucketBal[b.id] ?? 0,
+              target: b.target,
+              targetDate: b.targetDate,
+            })),
+            plan.strategy,
+            date,
+          );
+          for (const [bid, g] of Object.entries(give)) {
+            bucketBal[bid] = (bucketBal[bid] ?? 0) + g;
+            acctAllocated[a.id] += g;
+          }
+        },
+      });
+    }
+  }
+
+  events.sort((x, y) => x.date.getTime() - y.date.getTime() || x.order - y.order);
 
   // Markers: monthly grid (incl. start and end) ∪ event dates, deduped + sorted.
   const markerTimes = new Set<number>([start.getTime(), end.getTime()]);
@@ -168,14 +350,7 @@ export function simulate(state: BucketsState, from: Date, to: Date): Timeline {
   let ei = 0;
   for (const marker of markers) {
     while (ei < events.length && events[ei].date.getTime() <= marker.getTime()) {
-      const e = events[ei++];
-      const amount = e.drain ? Math.max(0, bucketBal[e.bucketId] ?? 0) : e.amount;
-      const sign = e.kind === "in" ? 1 : -1;
-      bucketBal[e.bucketId] = (bucketBal[e.bucketId] ?? 0) + sign * amount;
-      if (e.accountId && e.accountId in acctBal) {
-        acctBal[e.accountId] += sign * amount;
-        acctAllocated[e.accountId] += sign * amount;
-      }
+      events[ei++].apply();
     }
 
     timeline.dates.push(marker);
@@ -220,19 +395,6 @@ export function projectedTargetDate(
  * ------------------------------------------------------------------------- */
 
 const MONEY = z.number().min(0).max(1e11);
-
-export const accountSchema = z.object({
-  id: z.string().min(1),
-  name: z.string().trim().min(1).max(80),
-  kind: z.enum(["offset", "savings", "current", "investment", "other"]),
-  balance: MONEY,
-});
-
-export const allocationSchema = z.object({
-  accountId: z.string().min(1),
-  amount: MONEY,
-});
-
 const ISO_DATE = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
 
 export const recurrenceSchema = z.object({
@@ -243,6 +405,35 @@ export const recurrenceSchema = z.object({
   dayOfMonth: z.number().int().min(1).max(31).optional(),
   interval: z.number().int().min(1).max(52).optional(),
   count: z.number().int().min(1).max(1040).optional(),
+});
+
+export const accountFlowSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().trim().min(1).max(80),
+  kind: z.enum(["in", "out"]),
+  amount: MONEY,
+  recurrence: recurrenceSchema,
+});
+
+export const fundingPlanSchema = z.object({
+  strategy: z.enum(["target-date", "priority", "even"]),
+  cadence: recurrenceSchema,
+  amount: MONEY.optional(),
+  sharePct: z.number().min(0).max(100).optional(),
+});
+
+export const accountSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().trim().min(1).max(80),
+  kind: z.enum(["offset", "savings", "current", "investment", "other"]),
+  balance: MONEY,
+  flows: z.array(accountFlowSchema).optional(),
+  funding: fundingPlanSchema.optional(),
+});
+
+export const allocationSchema = z.object({
+  accountId: z.string().min(1),
+  amount: MONEY,
 });
 
 export const cashflowSchema = z.object({
@@ -261,6 +452,7 @@ export const bucketSchema = z.object({
   glyph: z.string().min(1).max(8),
   target: MONEY.optional(),
   targetDate: ISO_DATE.optional(),
+  sourceAccountId: z.string().min(1).optional(),
   allocations: z.array(allocationSchema),
   cashflows: z.array(cashflowSchema),
 });

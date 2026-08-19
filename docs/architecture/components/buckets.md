@@ -40,6 +40,9 @@ The data types this Component owns (from `types.ts`).
 | --- | --- | --- |
 | `AccountKind` | type | Where money physically lives. `offset` is the mortgage-offset case that motivated this. |
 | `Account` | interface | A real place money sits, with the balance the user reports for it. |
+| `AccountFlow` | interface | A recurring movement of money into or out of an account, independent of any bucket (salary, a bill). Reuses the same `Recurrence` engine as bucket cashflows. |
+| `FundingStrategy` | type | How an account's funding plan spreads money across *its* buckets: - `target-date` — each dated bucket gets `remaining ÷ months-left` (bottom-up); - `priority`    — fill buckets in order (their display order), overflow to the next; - `even`        — split equally across buckets not yet at target. |
+| `FundingPlan` | interface | An account-level rule that automatically fills its buckets each period. |
 | `Allocation` | interface | A slice of one account assigned to a bucket. Bucket balance = sum of these. |
 | `RecurrenceFreq` | type | How often a scheduled payment repeats. |
 | `Recurrence` | interface | When a scheduled payment happens. Date fields are date-only ISO strings (`YYYY-MM-DD`) — see `schedule.ts` for how these expand into actual dates. |

@@ -16,6 +16,19 @@ on its date; `projectedTargetDate` reads the first date a bucket hits its target
 `bucketsStateSchema` is the zod boundary. Over-allocation is surfaced in the UI, not
 rejected at the schema.
 
+**Dynamic accounts & funding (engine landed; UI pending — see
+[design-notes/006](../../design-notes/006-dynamic-accounts-and-bucket-funding.md)).** An `Account`
+may carry **`flows`** (`AccountFlow`s — salary in, a bill out; recurring, not tied to a bucket) and
+a **`funding`** plan (`FundingPlan`). `simulate` now replays account flows against account balances
+and, on each plan cadence, runs a **funding sweep**: it moves the account's unallocated surplus
+(or a fixed `amount`) into *its* buckets via the pure **`distributeFunding(amount, buckets,
+strategy, asOf)`** helper — `priority` (waterfall in bucket order), `even` (equal split with
+release-and-redistribute), or `target-date` (`remaining ÷ months-left` per dated bucket, leftover
+by priority). A bucket's funding account is `fundingAccountId(b)` = `sourceAccountId ?? mainAccountId`.
+Cross-component flows (investment contributions now, mortgage P&I later) are **not stored** on the
+account — the DAL/UI passes them via `simulate(..., { injectedFlows })` so the engine stays pure.
+All of this is **opt-in**: accounts with neither `flows` nor `funding` project exactly as before.
+
 > **The recurrence engine (`schedule.ts`) is shared** — `investments` contributions and
 > `spending` recurring expenses reuse `occurrences` / `addMonths` / `startOfDay` / `toISO`
 > from here rather than reinventing scheduling. It also owns **`cadenceLabel(recurrence)`** —
