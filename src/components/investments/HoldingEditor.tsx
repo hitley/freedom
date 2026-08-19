@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import {
+  DateInput,
   Field,
   MoneyInput,
   NumberInput,
@@ -468,6 +469,34 @@ function HistoryRows({
   );
 }
 
+/**
+ * Cadence presets map the friendly labels users think in ("Fortnightly") onto the
+ * recurrence engine's `{ freq, interval }`. `base` decides whether the contextual
+ * field is a weekday (weekly-based) or a day-of-month (monthly-based). Mirrors the
+ * spending editor's picker so both Views speak the same cadence language.
+ */
+const CADENCE_PRESETS = [
+  { id: "weekly", label: "Weekly", freq: "weekly", interval: 1, base: "weekly" },
+  { id: "fortnightly", label: "Fortnightly", freq: "weekly", interval: 2, base: "weekly" },
+  { id: "monthly", label: "Monthly", freq: "monthly", interval: 1, base: "monthly" },
+  { id: "quarterly", label: "Quarterly", freq: "monthly", interval: 3, base: "monthly" },
+  { id: "yearly", label: "Yearly", freq: "monthly", interval: 12, base: "monthly" },
+  { id: "once", label: "Once", freq: "once", interval: 1, base: "once" },
+] as const;
+
+type CadenceId = (typeof CADENCE_PRESETS)[number]["id"];
+
+/** Best-fit preset for an existing recurrence (defaults to monthly). */
+function cadenceOf(freq: string, interval: number): CadenceId {
+  const hit = CADENCE_PRESETS.find((p) => p.freq === freq && p.interval === interval);
+  return hit?.id ?? "monthly";
+}
+
+/** How a recurring schedule ends: run forever, stop on a date, or after N buys. */
+type EndsMode = "never" | "date" | "count";
+const endsOf = (rec: Contribution["recurrence"]): EndsMode =>
+  rec.count ? "count" : rec.endDate ? "date" : "never";
+
 /** The contribution amount + recurrence sub-form. */
 function ContributionRow({
   contribution,
@@ -480,6 +509,34 @@ function ContributionRow({
   const setRec = (patch: Partial<typeof rec>) =>
     onChange({ ...contribution, recurrence: { ...rec, ...patch } });
 
+  const cadence = cadenceOf(rec.freq, Math.max(1, rec.interval ?? 1));
+  const preset = CADENCE_PRESETS.find((p) => p.id === cadence)!;
+  const recurring = preset.freq !== "once";
+  const ends = endsOf(rec);
+
+  const setCadence = (id: CadenceId) => {
+    const p = CADENCE_PRESETS.find((c) => c.id === id)!;
+    // Switch cadence, keeping the start date; drop fields the new base can't use.
+    setRec({
+      freq: p.freq,
+      interval: p.interval,
+      ...(p.base === "monthly"
+        ? { dayOfMonth: rec.dayOfMonth ?? 1, weekday: undefined }
+        : p.base === "weekly"
+          ? { weekday: rec.weekday ?? 5, dayOfMonth: undefined }
+          : { weekday: undefined, dayOfMonth: undefined }),
+      // A one-off has no "ends" — clear any prior cap.
+      ...(p.freq === "once" ? { endDate: undefined, count: undefined } : {}),
+    });
+  };
+
+  const setEnds = (mode: EndsMode) => {
+    if (mode === "never") setRec({ endDate: undefined, count: undefined });
+    else if (mode === "date")
+      setRec({ endDate: rec.endDate ?? rec.startDate, count: undefined });
+    else setRec({ count: rec.count ?? 12, endDate: undefined });
+  };
+
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-2">
@@ -491,22 +548,18 @@ function ContributionRow({
           />
         </div>
         <Select
-          value={rec.freq}
-          onChange={(v) => setRec({ freq: v as typeof rec.freq })}
-          options={[
-            { value: "weekly", label: "Weekly" },
-            { value: "monthly", label: "Monthly" },
-            { value: "once", label: "Once" },
-          ]}
+          value={cadence}
+          onChange={(v) => setCadence(v as CadenceId)}
+          options={CADENCE_PRESETS.map((p) => ({ value: p.id, label: p.label }))}
         />
-        {rec.freq === "weekly" && (
+        {preset.base === "weekly" && (
           <Select
             value={String(rec.weekday ?? 5)}
             onChange={(v) => setRec({ weekday: Number(v) })}
             options={WEEKDAYS.map((d) => ({ value: String(d.id), label: d.label }))}
           />
         )}
-        {rec.freq === "monthly" && (
+        {preset.base === "monthly" && (
           <div className="inline-flex items-center gap-1 text-xs text-muted">
             day
             <input
@@ -524,19 +577,50 @@ function ContributionRow({
           </div>
         )}
       </div>
-      {(rec.freq === "weekly" || rec.freq === "monthly") && (
-        <div className="inline-flex items-center gap-1.5 text-xs text-muted">
-          every
-          <input
-            inputMode="numeric"
-            value={String(rec.interval ?? 1)}
-            onChange={(e) => {
-              const n = Math.max(1, Number(e.target.value.replace(/[^0-9]/g, "")) || 1);
-              setRec({ interval: n });
-            }}
-            className="w-12 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm outline-none focus:border-emerald"
+
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-muted">
+        <span>{recurring ? "starting" : "on"}</span>
+        <DateInput
+          value={rec.startDate}
+          onChange={(v) => setRec({ startDate: v || rec.startDate })}
+        />
+      </div>
+
+      {recurring && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-muted">
+          <span>ending</span>
+          <Select
+            value={ends}
+            onChange={(v) => setEnds(v as EndsMode)}
+            options={[
+              { value: "never", label: "Never" },
+              { value: "date", label: "On date" },
+              { value: "count", label: "After N times" },
+            ]}
           />
-          {rec.freq === "weekly" ? "week(s)" : "month(s)"}
+          {ends === "date" && (
+            <DateInput
+              value={rec.endDate ?? rec.startDate}
+              onChange={(v) => setRec({ endDate: v || undefined })}
+            />
+          )}
+          {ends === "count" && (
+            <span className="inline-flex items-center gap-1.5">
+              <input
+                inputMode="numeric"
+                value={String(rec.count ?? 12)}
+                onChange={(e) => {
+                  const n = Math.max(
+                    1,
+                    Number(e.target.value.replace(/[^0-9]/g, "")) || 1,
+                  );
+                  setRec({ count: n });
+                }}
+                className="w-14 rounded-lg border border-border bg-surface px-2 py-1.5 text-sm text-foreground outline-none focus:border-emerald"
+              />
+              times
+            </span>
+          )}
         </div>
       )}
     </div>

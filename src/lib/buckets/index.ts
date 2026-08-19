@@ -242,6 +242,7 @@ export const recurrenceSchema = z.object({
   weekday: z.number().int().min(0).max(6).optional(),
   dayOfMonth: z.number().int().min(1).max(31).optional(),
   interval: z.number().int().min(1).max(52).optional(),
+  count: z.number().int().min(1).max(1040).optional(),
 });
 
 export const cashflowSchema = z.object({

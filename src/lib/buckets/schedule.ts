@@ -68,6 +68,8 @@ export function occurrences(
   const cap =
     end && end.getTime() < untilInclusive.getTime() ? end : untilInclusive;
   const interval = Math.max(1, rec.interval ?? 1);
+  // Cap on total occurrences from `startDate` (an alternative to `endDate`).
+  const maxCount = rec.count && rec.count > 0 ? rec.count : Infinity;
   const out: Date[] = [];
 
   if (rec.freq === "once") {
@@ -80,9 +82,11 @@ export function occurrences(
     // First on-or-after `start` landing on the target weekday.
     let cursor = addDays(start, (targetDow - start.getDay() + 7) % 7);
     const stepDays = 7 * interval;
-    while (cursor.getTime() <= cap.getTime()) {
+    let fired = 0;
+    while (cursor.getTime() <= cap.getTime() && fired < maxCount) {
       if (cursor.getTime() > afterExclusive.getTime()) out.push(new Date(cursor));
       cursor = addDays(cursor, stepDays);
+      fired += 1;
     }
     return out;
   }
@@ -91,16 +95,16 @@ export function occurrences(
   const day = rec.dayOfMonth ?? start.getDate();
   // Anchor on the start month, then step `interval` months at a time.
   let anchor = new Date(start.getFullYear(), start.getMonth(), 1);
-  while (true) {
+  let fired = 0;
+  while (fired < maxCount) {
     const y = anchor.getFullYear();
     const mi = anchor.getMonth();
     const fire = new Date(y, mi, clampDayOfMonth(y, mi, day));
     if (fire.getTime() > cap.getTime()) break;
-    if (
-      fire.getTime() >= start.getTime() &&
-      fire.getTime() > afterExclusive.getTime()
-    ) {
-      out.push(fire);
+    // Only dates on/after the schedule start count as occurrences.
+    if (fire.getTime() >= start.getTime()) {
+      if (fire.getTime() > afterExclusive.getTime()) out.push(fire);
+      fired += 1;
     }
     anchor = addMonths(anchor, interval);
   }

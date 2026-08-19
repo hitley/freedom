@@ -47,7 +47,11 @@ seeds the dial with the derived value so overriding starts where derive left off
 state is local (defaults to Auto each load), not persisted.
 Then `buckets/BucketsPanel`, `investments/InvestmentsPanel` (portfolio value + by-kind breakdown +
 1-year look-ahead, with `investments/HoldingEditor` as the add/edit modal — which also captures
-the per-holding `history`). The holding cards **drag-to-reorder** via the shared `useReorder`
+the per-holding `history`). The holding's **recurring contribution** uses the same friendly
+**cadence picker** as spending (Weekly/Fortnightly/Monthly/Quarterly/Yearly/Once → the
+recurrence engine's `{ freq, interval }`, with a weekday or day-of-month field), a **start
+date**, and an **ends** control (Never / On date / After N times — the last writes
+`recurrence.count`). The holding cards **drag-to-reorder** via the shared `useReorder`
 hook (`src/components/useReorder.ts`, native HTML5 DnD with a FLIP glide); buckets cards use the
 same. Clicking the **"Projected in 1 year"** summary stat **maximises the whole portfolio** into
 `investments/PortfolioDetail` — the same detail shell driven by `projectPortfolio`, with a

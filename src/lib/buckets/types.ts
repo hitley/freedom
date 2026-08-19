@@ -55,6 +55,12 @@ export interface Recurrence {
   dayOfMonth?: number;
   /** Repeat every N periods (default 1): weekly×2 = fortnightly, monthly×3 = quarterly. */
   interval?: number;
+  /**
+   * Stop after this many occurrences total (counted from `startDate`). An
+   * alternative to `endDate` for capping a recurring schedule — e.g. 26
+   * fortnightly buys. Unset = run until `endDate` (or forever). Ignored by `once`.
+   */
+  count?: number;
 }
 
 /** Direction of a scheduled payment: money into a bucket, or spent out of it. */
