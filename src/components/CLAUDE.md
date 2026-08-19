@@ -104,9 +104,16 @@ balance (via `simulate`), with the goal drawn as a reference line, the projected
 headline, and a live "extra monthly contribution" what-if lever (a synthetic `in` cashflow) that
 shows how much sooner the goal lands. The y-axis is **pinned** (`ProjectionChart`'s `axisMax`,
 sized to the projection at the max extra contribution) so dragging the lever grows the line into a
-fixed frame instead of rescaling it — same as the holding/portfolio views. `BucketEditor` (incl. per-bucket scheduled payments) /
-`AccountsEditor` are modals. Buckets are independent of the projection engine for now — feeding
-bucket totals into the engine is a future step.
+fixed frame instead of rescaling it — same as the holding/portfolio views. `BucketEditor` /
+`AccountsEditor` are modals. `BucketEditor` holds name/icon/goal, the allocation slices, per-bucket
+scheduled payments, **and a "Funded from" account select** (`sourceAccountId`). **`AccountsEditor`**
+now expands each account to edit its **flows** (recurring money in/out — salary, bills) and an
+optional **auto-funding plan** (a strategy toggle — Target dates / Priority / Even split — sweeping
+either "whatever's spare" or a fixed amount, on a cadence); both feed `simulate`, so the accounts
+strip's as-of projection and the timeline reflect them automatically. See
+[design-notes/006](../../design-notes/006-dynamic-accounts-and-bucket-funding.md); cross-component
+derivation (investment/mortgage outflows) is a later slice. Buckets are independent of the freedom
+projection engine for now — feeding bucket totals into the engine is a future step.
 
 The **Spending** view (`spending/SpendingPanel`) leads with the **annualised-spend** headline
 compared against the vision's target spend, a by-category breakdown bar, then a **Planned** section

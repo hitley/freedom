@@ -62,6 +62,7 @@ export default function BucketEditor({
     bucket.target ? String(bucket.target) : "",
   );
   const [targetDate, setTargetDate] = useState<string>(bucket.targetDate ?? "");
+  const [sourceAccountId, setSourceAccountId] = useState<string>(bucket.sourceAccountId ?? "");
   const [cashflows, setCashflows] = useState<Cashflow[]>(bucket.cashflows);
   // Allocation amount per account, keyed by account id.
   const [alloc, setAlloc] = useState<Record<string, string>>(() => {
@@ -96,6 +97,7 @@ export default function BucketEditor({
       glyph,
       target: num(target) > 0 ? num(target) : undefined,
       targetDate: targetDate || undefined,
+      sourceAccountId: sourceAccountId || undefined,
       allocations,
       cashflows: cashflows.map((c) => ({
         ...c,
@@ -152,6 +154,25 @@ export default function BucketEditor({
             <DateInput value={targetDate} onChange={setTargetDate} />
           </Field>
         </div>
+
+        {/* which account auto-funds this bucket */}
+        {accounts.length > 0 && (
+          <div className="mt-4">
+            <Field label="Funded from (optional)">
+              <Select
+                value={sourceAccountId}
+                onChange={setSourceAccountId}
+                options={[
+                  { value: "", label: "Auto (largest allocation)" },
+                  ...accounts.map((a) => ({ value: a.id, label: a.name })),
+                ]}
+              />
+            </Field>
+            <p className="mt-1 text-xs text-muted">
+              If this account has an auto-fill plan, it tops up this bucket.
+            </p>
+          </div>
+        )}
 
         {/* allocations */}
         <div className="mt-6">
