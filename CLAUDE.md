@@ -131,6 +131,12 @@ New here? Setup is in [`README.md`](README.md); the Vercel production runbook is
 - Pure engine logic in `src/lib/` (no React, no DB). UI in `src/app` + components. The four-file
   Component shape and inward-dependency rule live in [`src/lib/CLAUDE.md`](src/lib/CLAUDE.md).
 - Commit/push only when asked.
+- **Design explorations get a committed design note.** When you design a new Component or a
+  non-trivial feature — including a `/design` pass that isn't being built yet — capture the
+  decisions, forks, and deferrals as a numbered [`design-notes/NNN-slug.md`](design-notes/README.md)
+  in the house format (metadata block: date, status, one-line summary), add it to the
+  `design-notes/` index, and drop a pointer in [`ROADMAP.md`](ROADMAP.md) when it's forward-looking.
+  Don't invent a parallel `docs/design/` tree — `design-notes/` is the one place for the *why*.
 - **Update the docs as part of every feature — the *nearest* one.** After building or changing
   functionality, update the **folder `CLAUDE.md`** closest to the code you touched (not this root),
   plus any other affected docs, in the same pass. Slot new docs into the **C4 altitude** they

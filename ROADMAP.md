@@ -165,6 +165,18 @@ plan when you start it, and delete it here once it ships (and update `CLAUDE.md`
 
 ## Later / bigger bets
 
+### Property Component (mortgages, equity & property scenarios) — designed, not built
+
+A new **Property** Component (Financial Domain) modelling a **portfolio of properties**, each an
+appreciating asset paired with an amortizing mortgage. Classified on two axes — **role**
+(`primary` vs `investment`) and **status** (`owned` vs `future`, where a future property is a
+scenario you toggle on to play with). Produces per-property **payoff ETAs**, **overpayment
+what-ifs**, and **equity + rental** that feed the [Trajectory](src/lib/finance/CLAUDE.md) — with
+equity split into *total net worth* vs *liquid freedom assets* so a primary residence doesn't
+inflate the freedom date. Investment-property equity is **user-toggleable** per property between
+*sell-to-fund* and *hold-for-income*. Full design, forks, and engine sketch in
+[`design-notes/005-property-mortgages-and-equity.md`](design-notes/005-property-mortgages-and-equity.md).
+
 ### Domains 2 & 3 (Time & Health) — coming soon
 
 Both are empty **Domain** slots (C2) that slot into the same **vision → current-state →

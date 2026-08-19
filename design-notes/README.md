@@ -31,3 +31,4 @@ forward-looking bits into `ROADMAP.md`. The note stays as the historical record 
 - [002 — BDD behavioural specs & living user documentation](002-bdd-testing-and-living-docs.md)
 - [003 — Recurring expenses, the monthly budget & bill reconciliation](003-recurring-expenses-and-budget-reconciliation.md)
 - [004 — Event-sourcing the financial-activity spine](004-event-sourcing-the-financial-activity-spine.md)
+- [005 — Property: mortgages, equity & property scenarios](005-property-mortgages-and-equity.md)
