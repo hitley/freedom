@@ -33,6 +33,10 @@ const HORIZONS = [
   { id: "10y", label: "10 yr", months: 120 },
 ] as const;
 
+// The extra-monthly what-if lever's ceiling, also used to pin a stable y-axis so
+// dragging the lever grows the line into a fixed frame instead of rescaling it.
+const MAX_EXTRA = 3000;
+
 /** A synthetic recurring `in` cashflow modelling the what-if "extra monthly" lever. */
 const extraContribution = (today: Date, amount: number): Cashflow => ({
   id: "__whatif_extra",
@@ -85,6 +89,19 @@ export default function BucketDetail({
   const series = timeline.buckets[bucket.id] ?? [];
   const projected = timeline.dates.map((d, i) => ({ t: d.getTime(), v: series[i] ?? 0 }));
   const projectedEnd = series[series.length - 1] ?? v.balance;
+
+  // A stable y-axis ceiling: the projection at the *maximum* extra contribution, so
+  // dragging the extra-monthly lever grows the line into a fixed frame rather than
+  // rescaling the axis under it (mirrors the holding/portfolio views). Depends on the
+  // bucket + horizon, not on the current lever, so a drag never rescales.
+  const axisMax = useMemo(() => {
+    const maxBucket: Bucket = {
+      ...bucket,
+      cashflows: [...bucket.cashflows, extraContribution(today, MAX_EXTRA)],
+    };
+    const tl = simulate({ accounts, buckets: [maxBucket] }, today, addMonths(today, months));
+    return Math.max(v.balance, ...(tl.buckets[bucket.id] ?? [v.balance]));
+  }, [bucket, accounts, today, months, v.balance]);
 
   // When does the goal land, on these assumptions? Search a long horizon so the
   // answer doesn't depend on the chart's selected window.
@@ -148,6 +165,7 @@ export default function BucketDetail({
         ariaLabel={`${bucket.name} balance over time`}
         projectedLabel="Projected balance"
         reference={bucket.target ? { value: bucket.target, label: "goal" } : undefined}
+        axisMax={axisMax}
         headerRight={<HorizonSelector options={HORIZONS} value={horizon} onChange={setHorizon} />}
         tooltipLines={tooltipLines}
       />
@@ -164,7 +182,7 @@ export default function BucketDetail({
             value={extraMonthly}
             display={extraMonthly > 0 ? `+${money0.format(extraMonthly)}` : "—"}
             min={0}
-            max={3000}
+            max={MAX_EXTRA}
             step={25}
             onChange={setExtraMonthly}
           />

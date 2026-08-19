@@ -102,7 +102,9 @@ of" selector that projects each account forward, and bucket cards; clicking a ca
 it into `buckets/BucketDetail` (same shell) — a forward-only projection of that single bucket's
 balance (via `simulate`), with the goal drawn as a reference line, the projected hit date in the
 headline, and a live "extra monthly contribution" what-if lever (a synthetic `in` cashflow) that
-shows how much sooner the goal lands. `BucketEditor` (incl. per-bucket scheduled payments) /
+shows how much sooner the goal lands. The y-axis is **pinned** (`ProjectionChart`'s `axisMax`,
+sized to the projection at the max extra contribution) so dragging the lever grows the line into a
+fixed frame instead of rescaling it — same as the holding/portfolio views. `BucketEditor` (incl. per-bucket scheduled payments) /
 `AccountsEditor` are modals. Buckets are independent of the projection engine for now — feeding
 bucket totals into the engine is a future step.
 
