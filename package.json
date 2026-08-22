@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "dev:real": "DATABASE_DRIVER=pglite PGLITE_DATA_DIR=\"$HOME/.freedom/real.pglite\" AUTH_DEV_BYPASS=true FREEDOM_PROFILE=real next dev",
-    "dev:demo": "DATABASE_DRIVER=pglite PGLITE_DATA_DIR=./.pglite-demo AUTH_DEV_BYPASS=true FREEDOM_PROFILE=demo next dev",
+    "dev": "FREEDOM_PROFILE=dev next dev",
+    "dev:real": "PORT=3102 DATABASE_DRIVER=pglite PGLITE_DATA_DIR=\"$HOME/.freedom/real.pglite\" AUTH_DEV_BYPASS=true FREEDOM_PROFILE=real next dev",
+    "dev:demo": "PORT=3101 DATABASE_DRIVER=pglite PGLITE_DATA_DIR=./.pglite-demo AUTH_DEV_BYPASS=true FREEDOM_PROFILE=demo next dev",
     "build": "npm run docs:build && next build",
     "start": "next start",
     "lint": "eslint",

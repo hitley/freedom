@@ -35,10 +35,15 @@ npm scripts that set the env inline:
   and rebuilds it from **`scripts/seed-demo.mjs`** — a committed, 100%-fabricated household ("Demo
   Household"). Safe to commit precisely because it's invented. The seed script **refuses to run
   unless `PGLITE_DATA_DIR` is set**, so it can never wipe the default or real db.
-- **Both dev profiles set `FREEDOM_PROFILE`**, which lights up the `ProfileBanner`
-  (`src/components/ProfileBanner.tsx`) at the top of every page: an **amber "DEMO DATA"** bar under
-  `demo`, a **red "REAL DATA"** bar under `real`. At-a-glance insurance against showing the wrong
-  dataset while presenting. (The default `npm run dev` and production render no bar.)
+- **Every local profile sets `FREEDOM_PROFILE` and is labelled**, which lights up the
+  `ProfileBanner` (`src/components/ProfileBanner.tsx`) at the top of every page: a **sky "DEV DATA"**
+  bar under `dev` (`npm run dev`, the default `./.pglite` scratch db), an **amber "DEMO DATA"** bar
+  under `demo`, a **red "REAL DATA"** bar under `real`. So the *unmarked* case is only production —
+  a local instance is never an unlabelled data surface. **Ports are pinned in the scripts** (`dev`
+  → 3000, `dev:demo` → 3101, `dev:real` → 3102) so real never lands on the default port; and a
+  **boot guard** (`src/instrumentation.ts`, Next's `register`) **refuses to start `real` on port
+  3000** — belt-and-braces against real financial data on the port opened by habit. (Production
+  renders no bar and the guard is a no-op there.)
 - Both dev profiles set `AUTH_DEV_BYPASS=true` and run as the fixed dev user
   (`src/lib/server/dev-auth.ts`); the seed writes that user's workspace so `dev:demo` reads it.
 
