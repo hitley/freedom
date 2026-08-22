@@ -26,10 +26,15 @@ import type { InboxItem, NewInboxItemInput } from "@/lib/inbox";
  * the actions stay minimal, dead-code-eliminable entry points.
  */
 
+// Every save carries the instance id the data was loaded for. Binding the write to
+// that workspace (ownership-checked in the DAL) stops a debounced save that flushes
+// after a workspace switch from landing on whoever is now active — the cross-workspace
+// leak. `null` = no workspace yet (first save), which provisions the default.
 export async function saveFinancialProfileAction(
   inputs: FinancialInputsInput,
+  instanceId: string | null,
 ): Promise<{ ok: true }> {
-  await saveFinancialProfile(inputs);
+  await saveFinancialProfile(inputs, instanceId);
   return { ok: true };
 }
 
@@ -57,29 +62,33 @@ export async function createWorkspaceAction(
 
 export async function saveVisionAction(
   vision: FreedomVisionInput,
+  instanceId: string | null,
 ): Promise<{ ok: true }> {
-  await saveVision(vision);
+  await saveVision(vision, instanceId);
   return { ok: true };
 }
 
 export async function saveBucketsAction(
   buckets: BucketsStateInput,
+  instanceId: string | null,
 ): Promise<{ ok: true }> {
-  await saveBuckets(buckets);
+  await saveBuckets(buckets, instanceId);
   return { ok: true };
 }
 
 export async function saveInvestmentsAction(
   investments: InvestmentsStateInput,
+  instanceId: string | null,
 ): Promise<{ ok: true }> {
-  await saveInvestments(investments);
+  await saveInvestments(investments, instanceId);
   return { ok: true };
 }
 
 export async function saveSpendingAction(
   spending: SpendingStateInput,
+  instanceId: string | null,
 ): Promise<{ ok: true }> {
-  await saveSpending(spending);
+  await saveSpending(spending, instanceId);
   return { ok: true };
 }
 

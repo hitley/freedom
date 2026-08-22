@@ -131,6 +131,20 @@ export async function getOrCreateActiveInstance() {
   return owned.find((w) => w.id === id) ?? owned[0];
 }
 
+/**
+ * The workspace a **write** must target. When the client passes the instance id the
+ * data was loaded for, the write is bound to that exact workspace (ownership-checked
+ * through `requireInstance`) — so a debounced save that only flushes *after* the
+ * active workspace changed lands on the workspace the data belongs to, never on
+ * whoever is now active. That closes the cross-workspace stale-write race. With no id
+ * (the very first save, before any workspace exists) we fall back to provisioning /
+ * resolving the active instance, exactly as before.
+ */
+export async function resolveWriteInstance(expectedInstanceId?: string | null) {
+  if (expectedInstanceId) return requireInstance(expectedInstanceId);
+  return getOrCreateActiveInstance();
+}
+
 /** Create a new workspace owned by the signed-in user. */
 export async function createInstance(name: string) {
   const user = await requireUser();

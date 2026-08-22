@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { financialProfiles } from "@/db/schema";
 import { financialInputsSchema, type FinancialInputs } from "@/lib/finance";
-import { getActiveInstance, getOrCreateActiveInstance } from "./instance";
+import { getActiveInstance, resolveWriteInstance } from "./instance";
 
 /**
  * Data access layer for an instance's financial profile (the engine inputs).
@@ -40,9 +40,9 @@ export async function loadFinancialProfile(): Promise<FinancialInputs | null> {
  * Upsert the default instance's engine inputs. Validates untrusted input at the
  * boundary, lazily provisioning the instance on first save.
  */
-export async function saveFinancialProfile(input: unknown): Promise<void> {
+export async function saveFinancialProfile(input: unknown, expectedInstanceId?: string | null): Promise<void> {
   const inputs = financialInputsSchema.parse(input);
-  const instance = await getOrCreateActiveInstance();
+  const instance = await resolveWriteInstance(expectedInstanceId);
 
   const values = {
     instanceId: instance.id,

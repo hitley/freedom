@@ -1,7 +1,16 @@
 # Access layer (DAL) — `src/lib/server/`
 
-The server-only data-access layer. This is the **authorization choke-point** — every read/write
-resolves the instance from the session (never a client-supplied id), so there's no IDOR surface.
+The server-only data-access layer. This is the **authorization choke-point** — every read
+resolves the instance from the session, so there's no IDOR surface. A **write** may name the
+instance it targets (`save*(input, expectedInstanceId?)` → `resolveWriteInstance`), but that id is
+**ownership-checked through `requireInstance`** before anything is written — so it still can't
+reach another owner's rows, and with no id it falls back to the session's active instance. This
+binding exists to fix a real bug: saves are **debounced on the client**, and a save that flushes
+*after* the user switches workspace used to resolve the *now-active* instance and write the old
+workspace's document into it (a cross-workspace data leak — buckets showing another workspace's
+buckets). Binding each save to the instance its data was loaded for (`activeInstanceId`, which the
+page keys `FreedomApp` by, so it's stable per mount) makes a stale flush land on the right
+workspace. Every component's `save*` + its `save*Action` thread this id through.
 
 `instance.ts` is the centre: `requireUser` (cached `auth()`), `getDefaultInstance` (read-only;
 `null` if none), `getOrCreateDefaultInstance` (write-path only — lazily provisions the workspace

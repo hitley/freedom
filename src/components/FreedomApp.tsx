@@ -242,8 +242,9 @@ type SaveState = "idle" | "saving" | "saved";
  */
 function useDebouncedSave<T>(
   value: T,
-  save: (value: T) => Promise<unknown>,
+  save: (value: T, instanceId: string | null) => Promise<unknown>,
   setSaveState: (s: SaveState) => void,
+  instanceId: string | null,
 ) {
   const firstRun = useRef(true);
   useEffect(() => {
@@ -254,14 +255,18 @@ function useDebouncedSave<T>(
     setSaveState("saving");
     const timer = setTimeout(async () => {
       try {
-        await save(value);
+        // Bind the save to the workspace this component instance belongs to — never
+        // the one that may have become active in the meantime (the cross-workspace
+        // leak). `activeInstanceId` never changes for a given mount (the page keys
+        // FreedomApp by it), so a stale flush still targets the right workspace.
+        await save(value, instanceId);
         setSaveState("saved");
       } catch {
         setSaveState("idle");
       }
     }, 700);
     return () => clearTimeout(timer);
-  }, [value, save, setSaveState]);
+  }, [value, save, setSaveState, instanceId]);
 }
 
 interface FreedomAppProps {
@@ -277,16 +282,17 @@ interface FreedomAppProps {
   initialSpending: SpendingState | null;
   /** The instance's inbox items (newest-first), loaded server-side; may be empty. */
   initialInbox: InboxItem[];
-  /** Server action persisting the engine inputs (auth/validation server-side). */
-  saveInputsAction: (inputs: FinancialInputs) => Promise<{ ok: true }>;
+  /** Server actions persist per-Component state. Each takes the instance id the data
+   *  was loaded for, so a save binds to that workspace (not whoever is active now). */
+  saveInputsAction: (inputs: FinancialInputs, instanceId: string | null) => Promise<{ ok: true }>;
   /** Server action persisting the captured vision. */
-  saveVisionAction: (vision: FreedomVision) => Promise<{ ok: true }>;
+  saveVisionAction: (vision: FreedomVision, instanceId: string | null) => Promise<{ ok: true }>;
   /** Server action persisting the buckets state. */
-  saveBucketsAction: (buckets: BucketsState) => Promise<{ ok: true }>;
+  saveBucketsAction: (buckets: BucketsState, instanceId: string | null) => Promise<{ ok: true }>;
   /** Server action persisting the investments state. */
-  saveInvestmentsAction: (investments: InvestmentsState) => Promise<{ ok: true }>;
+  saveInvestmentsAction: (investments: InvestmentsState, instanceId: string | null) => Promise<{ ok: true }>;
   /** Server action persisting the spending state. */
-  saveSpendingAction: (spending: SpendingState) => Promise<{ ok: true }>;
+  saveSpendingAction: (spending: SpendingState, instanceId: string | null) => Promise<{ ok: true }>;
   /** Server action capturing a new inbox item; returns the created item. */
   addInboxItemAction: (input: NewInboxItemInput) => Promise<InboxItem>;
   /** Server action dismissing an inbox item. */
@@ -419,10 +425,10 @@ export default function FreedomApp({
   // Debounced persistence of each editable View (Component) (vision is saved explicitly on
   // completion). The hook skips its first run so seeding from the server doesn't
   // write back.
-  useDebouncedSave(inputs, saveInputsAction, setSaveState);
-  useDebouncedSave(buckets, saveBucketsAction, setSaveState);
-  useDebouncedSave(investments, saveInvestmentsAction, setSaveState);
-  useDebouncedSave(spending, saveSpendingAction, setSaveState);
+  useDebouncedSave(inputs, saveInputsAction, setSaveState, activeInstanceId);
+  useDebouncedSave(buckets, saveBucketsAction, setSaveState, activeInstanceId);
+  useDebouncedSave(investments, saveInvestmentsAction, setSaveState, activeInstanceId);
+  useDebouncedSave(spending, saveSpendingAction, setSaveState, activeInstanceId);
 
   const onChange = (key: keyof FinancialInputs, value: number) =>
     setInputs((prev) => ({ ...prev, [key]: value }));
@@ -474,7 +480,7 @@ export default function FreedomApp({
     // Persist the captured vision immediately (not debounced — it's a deliberate
     // commit, and `inputs` is saved separately by its own debounced effect).
     setSaveState("saving");
-    saveVisionAction(v)
+    saveVisionAction(v, activeInstanceId)
       .then(() => setSaveState("saved"))
       .catch(() => setSaveState("idle"));
   };

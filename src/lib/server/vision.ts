@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { visionStates } from "@/db/schema";
 import { freedomVisionSchema, type FreedomVision } from "@/lib/vision";
-import { getActiveInstance, getOrCreateActiveInstance } from "./instance";
+import { getActiveInstance, resolveWriteInstance } from "./instance";
 
 /**
  * Data access layer for an instance's captured vision. Stored as a single
@@ -26,9 +26,9 @@ export async function loadVision(): Promise<FreedomVision | null> {
 }
 
 /** Upsert the default instance's vision, provisioning the instance on first save. */
-export async function saveVision(input: unknown): Promise<void> {
+export async function saveVision(input: unknown, expectedInstanceId?: string | null): Promise<void> {
   const data = freedomVisionSchema.parse(input);
-  const instance = await getOrCreateActiveInstance();
+  const instance = await resolveWriteInstance(expectedInstanceId);
   const updatedAt = new Date();
 
   await db

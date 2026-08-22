@@ -4,7 +4,7 @@ import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { spendingStates } from "@/db/schema";
 import { spendingStateSchema, type SpendingState } from "@/lib/spending";
-import { getActiveInstance, getOrCreateActiveInstance } from "./instance";
+import { getActiveInstance, resolveWriteInstance } from "./instance";
 
 /**
  * Data access layer for an instance's spending state. Stored as a single jsonb
@@ -29,9 +29,9 @@ export async function loadSpending(): Promise<SpendingState | null> {
 }
 
 /** Upsert the default instance's spending state, provisioning on first save. */
-export async function saveSpending(input: unknown): Promise<void> {
+export async function saveSpending(input: unknown, expectedInstanceId?: string | null): Promise<void> {
   const data = spendingStateSchema.parse(input);
-  const instance = await getOrCreateActiveInstance();
+  const instance = await resolveWriteInstance(expectedInstanceId);
   const updatedAt = new Date();
 
   await db
