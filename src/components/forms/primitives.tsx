@@ -6,10 +6,34 @@
  * cashflow/history rows); only these generic field controls are shared.
  */
 
+import { useEffect, useState } from "react";
 import { HOME_SYMBOL } from "@/lib/money";
 import { DatePicker } from "./DatePicker";
 
 export { DatePicker } from "./DatePicker";
+
+/**
+ * Keeps a numeric text field's in-progress draft alive across re-renders.
+ *
+ * Numeric fields are often bound to a parent that stores a `number` and feeds
+ * back `String(n)`. That round-trip drops a trailing decimal point (`"12."` →
+ * `12` → `"12"`), so cents can never be typed. This hook holds the raw draft
+ * locally and only re-syncs from the parent when the two differ *numerically*
+ * (a genuinely new value), leaving a half-typed `"12."` untouched.
+ */
+function useNumericDraft(value: string, onChange: (v: string) => void) {
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    if (Number(draft) !== Number(value)) setDraft(value);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+  const handle = (raw: string) => {
+    const clean = raw.replace(/[^0-9.]/g, "");
+    setDraft(clean);
+    onChange(clean);
+  };
+  return [draft, handle] as const;
+}
 
 /** A labelled block: a small caption above an arbitrary control. */
 export function Field({
@@ -37,13 +61,14 @@ export function MoneyInput({
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
+  const [draft, handle] = useNumericDraft(value, onChange);
   return (
     <div className="flex items-center rounded-xl border border-border bg-surface px-3 transition-colors focus-within:border-emerald">
       <span className="text-sm text-muted">{HOME_SYMBOL}</span>
       <input
         inputMode="decimal"
-        value={value}
-        onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ""))}
+        value={draft}
+        onChange={(e) => handle(e.target.value)}
         placeholder={placeholder}
         className="w-full bg-transparent px-1.5 py-2.5 text-sm outline-none placeholder:text-muted/40"
       />
@@ -61,11 +86,12 @@ export function NumberInput({
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
+  const [draft, handle] = useNumericDraft(value, onChange);
   return (
     <input
       inputMode="decimal"
-      value={value}
-      onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ""))}
+      value={draft}
+      onChange={(e) => handle(e.target.value)}
       placeholder={placeholder}
       className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm outline-none transition-colors placeholder:text-muted/40 focus:border-emerald"
     />
@@ -82,12 +108,13 @@ export function PercentInput({
   onChange: (v: string) => void;
   placeholder?: string;
 }) {
+  const [draft, handle] = useNumericDraft(value, onChange);
   return (
     <div className="flex items-center rounded-xl border border-border bg-surface px-3 transition-colors focus-within:border-emerald">
       <input
         inputMode="decimal"
-        value={value}
-        onChange={(e) => onChange(e.target.value.replace(/[^0-9.]/g, ""))}
+        value={draft}
+        onChange={(e) => handle(e.target.value)}
         placeholder={placeholder}
         className="w-full bg-transparent px-1.5 py-2.5 text-sm outline-none placeholder:text-muted/40"
       />

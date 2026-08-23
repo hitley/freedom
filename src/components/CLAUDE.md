@@ -148,7 +148,11 @@ in the Spending view, tagged "imported").
   / `primitives`; don't rebuild them per View.
 - **Shared form primitives** live in `src/components/forms/primitives.tsx` (`Field`, `MoneyInput`,
   `NumberInput`, `PercentInput`, `Select`, `DateInput`, `DatePicker`) — import them into editor
-  modals rather than re-defining; they're pure presentational field controls. View-specific
+  modals rather than re-defining; they're pure presentational field controls. The three numeric
+  inputs keep an **internal draft string** (`useNumericDraft`) so cents survive even when the
+  parent stores a `number` and feeds back `String(n)` — without it a trailing decimal point
+  (`"12."` → `12` → `"12"`) gets wiped mid-keystroke and only whole numbers can be typed (this
+  was the bug in `HoldingEditor`'s recurring contribution, which round-trips through `Number`). View-specific
   sub-forms (toggles, cashflow/history rows) stay in their editor. **Date entry is the custom
   `DatePicker`** (`src/components/forms/DatePicker.tsx`), not a native `<input type="date">`: a
   calendar popover with **day → month → year** drill-down (click the header to zoom out, pick a
